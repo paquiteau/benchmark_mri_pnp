@@ -44,8 +44,15 @@ class Solver(BaseSolver):
         self.lambd = lambd
 
     def run(self, n_iter):
-        linear_op = WaveletN(wavelet_name=self.wavelet_name, nb_scales=self.nb_scales)
-        regularizer_op = SparseThreshold(Identity(), self.lambd, thresh_type="soft")
+        linear_op = WaveletN(
+            wavelet_name=self.wavelet_name,
+            nb_scales=self.nb_scales
+        )
+        regularizer_op = SparseThreshold(
+            Identity(),
+            self.lambd,
+            thresh_type="soft"
+        )
         reconstructor = SingleChannelReconstructor(
             fourier_op=self.fourier_op,
             linear_op=linear_op,
