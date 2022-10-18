@@ -19,9 +19,10 @@ class Solver(BaseSolver):
 
     # any parameter defined here is accessible as a class attribute
     parameters = {
-        "wavelet_name": ["sym8"],
-        "nb_scales": [4],
-        "lambd": [2 * 1e-7]
+        "wavelet_name": pysap.AVAILABLE_TRANSFORMS,
+        "nb_scales": [4, 8, 16],
+        "lambd": np.logspace(-7, -4, 4),
+        "formulation": ["synthesis", "analysis"]
     }
 
     def set_objective(
@@ -31,7 +32,8 @@ class Solver(BaseSolver):
         image,
         wavelet_name="sym8",
         nb_scales=4,
-        lambd=2 * 1e-7
+        lambd=2 * 1e-7,
+        formulation='synthesis'
     ):
         # The arguments of this function are the results of the
         # `to_dict` method of the objective.
@@ -42,6 +44,7 @@ class Solver(BaseSolver):
         self.wavelet_name = wavelet_name
         self.nb_scales = nb_scales
         self.lambd = lambd
+        self.formulation = formulation
 
     def run(self, n_iter):
         linear_op = WaveletN(
@@ -57,7 +60,7 @@ class Solver(BaseSolver):
             fourier_op=self.fourier_op,
             linear_op=linear_op,
             regularizer_op=regularizer_op,
-            gradient_formulation='synthesis',
+            gradient_formulation=self.formulation,
             verbose=0
         )
         x_final, _, _ = reconstructor.reconstruct(
