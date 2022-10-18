@@ -1,4 +1,3 @@
-from tokenize import Single
 from benchopt import BaseSolver, safe_import_context
 
 with safe_import_context() as import_ctx:
@@ -6,7 +5,7 @@ with safe_import_context() as import_ctx:
     import numpy as np
     from mri.operators import WaveletN
     from mri.reconstructors import SingleChannelReconstructor
-    
+
     from modopt.opt.proximity import SparseThreshold
     from modopt.opt.linear import Identity
 
@@ -25,7 +24,15 @@ class Solver(BaseSolver):
         "lambd": [2 * 1e-7]
     }
 
-    def set_objective(self, kspace_data, fourier_op, image, wavelet_name="sym8", nb_scales=4, lambd=2 * 1e-7):
+    def set_objective(
+        self,
+        kspace_data,
+        fourier_op,
+        image,
+        wavelet_name="sym8",
+        nb_scales=4,
+        lambd=2 * 1e-7
+    ):
         # The arguments of this function are the results of the
         # `to_dict` method of the objective.
         # They are customizable.
@@ -38,7 +45,8 @@ class Solver(BaseSolver):
 
     def run(self, n_iter):
         linear_op = WaveletN(wavelet_name="sym8", nb_scales=4)
-        regularizer_op = SparseThreshold(Identity(), 2 * 1e-7, thresh_type="soft")
+        regularizer_op = SparseThreshold(Identity(), 2 * 1e-7,
+                                         thresh_type="soft")
         reconstructor = SingleChannelReconstructor(
             fourier_op=self.fourier_op,
             linear_op=linear_op,
