@@ -20,7 +20,7 @@ class Dataset(BaseDataset):
     #         (5000, 200)]
     # }
     parameters = {
-        "datadir": ["/home/benoit/Desktop/retreat_2022/pysap_data"]
+        "datadir": ["./pysap_data"]
     }
 
     def __init__(self, datadir):
