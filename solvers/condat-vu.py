@@ -12,7 +12,7 @@ with safe_import_context() as import_ctx:
 
 class Solver(BaseSolver):
     """Zero order solution"""
-    name = 'fista'
+    name = 'condat-vu'
 
     install_cmd = 'conda'
     requirements = ['pip:python-pysap']
@@ -57,12 +57,12 @@ class Solver(BaseSolver):
             fourier_op=self.fourier_op,
             linear_op=linear_op,
             regularizer_op=regularizer_op,
-            gradient_formulation='synthesis',
+            gradient_formulation='analysis',
             verbose=0
         )
         x_final, _, _ = reconstructor.reconstruct(
             kspace_data=self.kspace_data,
-            optimization_alg="fista",
+            optimization_alg="condatvu",
             num_iterations=max(n_iter, 1)
         )
 
