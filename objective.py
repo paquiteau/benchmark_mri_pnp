@@ -36,7 +36,7 @@ class Objective(BaseObjective):
         # `get_result` method of the solver.
         # They are customizable.
         return dict(
-            value=psnr(beta, self.image),
+            value=-psnr(beta, self.image),
             value_ssim=ssim(beta, self.image),
             value_psnr=psnr(beta, self.image)
         )
