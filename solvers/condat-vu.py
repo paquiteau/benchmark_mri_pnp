@@ -12,7 +12,7 @@ with safe_import_context() as import_ctx:
 
 class Solver(BaseSolver):
     """Zero order solution"""
-    name = 'fista'
+    name = 'condat-vu'
 
     install_cmd = 'conda'
     requirements = ['pip:python-pysap']
@@ -44,19 +44,18 @@ class Solver(BaseSolver):
         self.lambd = lambd
 
     def run(self, n_iter):
-        linear_op = WaveletN(wavelet_name="sym8", nb_scales=4)
-        regularizer_op = SparseThreshold(Identity(), 2 * 1e-7,
-                                         thresh_type="soft")
+        linear_op = WaveletN(wavelet_name=self.wavelet_name, nb_scales=self.nb_scales)
+        regularizer_op = SparseThreshold(Identity(), self.lambd, thresh_type="soft")
         reconstructor = SingleChannelReconstructor(
             fourier_op=self.fourier_op,
             linear_op=linear_op,
             regularizer_op=regularizer_op,
-            gradient_formulation='synthesis',
+            gradient_formulation='analysis',
             verbose=0
         )
         x_final, _, _ = reconstructor.reconstruct(
             kspace_data=self.kspace_data,
-            optimization_alg="fista",
+            optimization_alg="condatvu",
             num_iterations=max(n_iter, 1)
         )
 
