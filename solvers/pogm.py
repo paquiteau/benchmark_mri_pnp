@@ -19,9 +19,9 @@ class Solver(BaseSolver):
 
     # any parameter defined here is accessible as a class attribute
     parameters = {
-        "wavelet_name": pysap.AVAILABLE_TRANSFORMS,
-        "nb_scales": [4, 8, 16],
-        "lambd": np.logspace(-7, -4, 4),
+        "wavelet_name": ["HaarWaveletTransform", "sym15", "bior11"],
+        "nb_scales": [4, 16],
+        "lambd": [1e-7],
         "formulation": ["synthesis", "analysis"],
     }
 
