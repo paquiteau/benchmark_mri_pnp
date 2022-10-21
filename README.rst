@@ -1,21 +1,11 @@
 
-My Benchopt Benchmark
+Benchmark for MRI reconstruction algorithms
 =====================
 |Build Status| |Python 3.6+|
 
 Benchopt is a package to simplify and make more transparent and
 reproducible the comparisons of optimization algorithms.
-This benchmark is dedicated to solver of **describe your problem**:
-
-
-$$\\min_{w} f(X, w)$$
-
-
-where $n$ (or ``n_samples``) stands for the number of samples, $p$ (or ``n_features``) stands for the number of features and
-
-
-$$X \\in \\mathbb{R}^{n \\times p} \\ , \\quad w \\in \\mathbb{R}^p$$
-
+This benchmark is dedicated to **MRI reconstruction**.
 
 Install
 --------
