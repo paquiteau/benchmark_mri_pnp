@@ -9,7 +9,7 @@ class Solver(BaseSolver):
     name = 'adjoint'
 
     install_cmd = 'conda'
-    requirements = ['pip:python-pysap']
+    requirements = ['cmake', 'pip:python-pysap']
 
     # any parameter defined here is accessible as a class attribute
     parameters = {}

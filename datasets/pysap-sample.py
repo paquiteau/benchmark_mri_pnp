@@ -10,7 +10,7 @@ class Dataset(BaseDataset):
     name = "pysap-sample"
 
     install_cmd = 'conda'
-    requirements = ['pip:python-pysap']
+    requirements = ['cmake', 'pip:python-pysap']
 
     # List of parameters to generate the datasets. The benchmark will consider
     # the cross product for each key in the dictionary.
