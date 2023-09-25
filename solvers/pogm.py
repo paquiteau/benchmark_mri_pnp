@@ -15,12 +15,12 @@ class Solver(BaseSolver):
     name = 'pogm'
 
     install_cmd = 'conda'
-    requirements = ['pip:python-pysap']
+    requirements = ['cmake', 'pip:python-pysap']
 
     # any parameter defined here is accessible as a class attribute
     parameters = {
-        "wavelet_name": ["sym8"],
-        "nb_scales": [4],
+        "wavelet_name": ["HaarWaveletTransform", "sym15", "bior11"],
+        "nb_scales": [4, 16],
         "lambd": [1e-7],
         "formulation": ["synthesis", "analysis"],
     }

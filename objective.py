@@ -11,7 +11,7 @@ class Objective(BaseObjective):
     name = "MRI reconstruction"
 
     install_cmd = 'conda'
-    requirements = ['pip:python-pysap']
+    requirements = ['cmake', 'pip:python-pysap']
 
     # All parameters 'p' defined here are available as 'self.p'
     # parameters = {

@@ -15,14 +15,21 @@ class Solver(BaseSolver):
     name = 'fista'
 
     install_cmd = 'conda'
-    requirements = ['pip:python-pysap']
+    requirements = ['cmake', 'pip:python-pysap']
 
     # any parameter defined here is accessible as a class attribute
     parameters = {
+<<<<<<< HEAD
         "wavelet_name": ["sym8"],
         "nb_scales": [4],
         "lambd": [1e-7],
         "formulation": ["synthesis", "analysis"]
+=======
+        "wavelet_name": ["HaarWaveletTransform", "sym15", "bior11"],
+        "nb_scales": [4, 16],
+        "lambd": [1e-7],
+        "formulation": ["synthesis", "analysis"],
+>>>>>>> ea5b52924a2576da39cacaf8f1d934ffef63a935
     }
 
     def set_objective(
