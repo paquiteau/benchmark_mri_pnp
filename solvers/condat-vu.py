@@ -19,9 +19,9 @@ class Solver(BaseSolver):
 
     # any parameter defined here is accessible as a class attribute
     parameters = {
-        "wavelet_name": pysap.AVAILABLE_TRANSFORMS,
-        "nb_scales": [4, 8, 16],
-        "lambd": np.logspace(-7, -4, 4),
+        "wavelet_name": ["sym8"],
+        "nb_scales": [4],
+        "lambd": [1e-7],
         'formulation': ['analysis']
     }
 
@@ -75,4 +75,4 @@ class Solver(BaseSolver):
         # The outputs of this function are the arguments of the
         # `compute` method of the objective.
         # They are customizable.
-        return self.w
+        return {"beta": self.w}

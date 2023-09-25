@@ -19,7 +19,7 @@ class Objective(BaseObjective):
     # }
     parameters = {}
 
-    def get_one_solution(self):
+    def get_one_result(self):
         # Return one solution. This should be compatible with 'self.compute'.
         return np.zeros(self.image.shape)
 
@@ -31,7 +31,7 @@ class Objective(BaseObjective):
         self.fourier_op = fourier_op
         self.image = image
 
-    def compute(self, beta):
+    def evaluate_result(self, beta):
         # The arguments of this function are the outputs of the
         # `get_result` method of the solver.
         # They are customizable.
@@ -42,7 +42,7 @@ class Objective(BaseObjective):
         )
         # return psnr(beta, self.image)
 
-    def to_dict(self):
+    def get_objective(self):
         # The output of this function are the keyword arguments
         # for the `set_objective` method of the solver.
         # They are customizable.

@@ -32,4 +32,4 @@ class Solver(BaseSolver):
         # The outputs of this function are the arguments of the
         # `compute` method of the objective.
         # They are customizable.
-        return self.w
+        return {"beta": self.w}
