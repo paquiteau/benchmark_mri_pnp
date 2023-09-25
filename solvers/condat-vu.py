@@ -19,17 +19,10 @@ class Solver(BaseSolver):
 
     # any parameter defined here is accessible as a class attribute
     parameters = {
-<<<<<<< HEAD
-        "wavelet_name": ["sym8"],
-        "nb_scales": [4],
-        "lambd": [1e-7],
-        'formulation': ['analysis']
-=======
         "wavelet_name": ["HaarWaveletTransform", "sym15", "bior11"],
         "nb_scales": [4, 16],
         "lambd": [1e-7],
         "formulation": ["analysis"],
->>>>>>> ea5b52924a2576da39cacaf8f1d934ffef63a935
     }
 
     def set_objective(
