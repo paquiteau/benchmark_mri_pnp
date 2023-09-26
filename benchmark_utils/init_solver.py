@@ -1,10 +1,22 @@
 
 import numpy as np
-from modopt.opt.algorithms import POGM, ForwardBackward
-from modopt.opt.cost import costObj
+from modopt.opt.algorithms import POGM, ForwardBackward, Condat
+from modopt.opt.linear import Identity
+from mri.operators.gradient.gradient import GradAnalysis, GradSynthesis
 
-OPTIMIZERS = {"pogm": "synthesis", "fista": "analysis", None: None}
+OPTIMIZERS = {"pogm": "synthesis", "fista": "analysis", "condat-vu": "analysis", None: None}
 
+def get_grad_op(fourier_op, grad_formulation, linear_op=None, verbose=False, **kwargs):
+    """Create gradient operator specific to the problem."""
+    if grad_formulation == "analysis":
+        return GradAnalysis(fourier_op=fourier_op, verbose=verbose, **kwargs)
+    if grad_formulation == "synthesis":
+        return GradSynthesis(
+            linear_op=linear_op,
+            fourier_op=fourier_op,
+            verbose=verbose,
+            **kwargs,
+            )
 
 def initialize_opt(
     opt_name,
@@ -58,8 +70,6 @@ def initialize_opt(
     metric_kwargs = metric_kwargs or dict()
 
     beta = grad_op.inv_spec_rad
-    if opt_kwargs.get("cost", None) == "auto":
-        opt_kwargs["cost"] = costObj([grad_op, prox_op], verbose=False)
     if opt_name == "pogm":
         opt = POGM(
             u=alpha_init,
@@ -87,6 +97,21 @@ def initialize_opt(
             **opt_kwargs,
             **metric_kwargs,
         )
+    elif opt_name == "conda-vu":
+
+        y_init = linear_op.op(x_init)
+
+        opt = Condat(
+            x=x_init,
+            y=y_init,
+            grad=grad_op,
+            prox=Identity(),
+            prox_dual= prox_op,
+            linear=linear_op,
+            **opt_kwargs,
+            **metric_kwargs,
+        )
+
     else:
         raise ValueError(f"Optimizer {opt_name} not implemented")
     return opt
