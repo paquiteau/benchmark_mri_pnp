@@ -4,7 +4,7 @@ from benchopt import BaseObjective, safe_import_context
 # Useful for autocompletion and install commands
 with safe_import_context() as import_ctx:
     import numpy as np
-    from modopt.math.metrics import psnr, ssim
+    from modopt.math.metrics import psnr, ssim, mse
 
 
 class Objective(BaseObjective):
@@ -31,14 +31,17 @@ class Objective(BaseObjective):
         self.fourier_op = fourier_op
         self.image = image
 
-    def evaluate_result(self, beta):
+    def evaluate_result(self, beta, cost_grad, cost_prox):
         # The arguments of this function are the outputs of the
         # `get_result` method of the solver.
         # They are customizable.
         return dict(
-            value=-psnr(beta, self.image),
+            value=cost_grad + cost_prox,
+            value_mse=mse(beta, self.image),
             value_ssim=ssim(beta, self.image),
-            value_psnr=psnr(beta, self.image)
+            value_psnr=psnr(beta, self.image),
+            cost_grad=cost_grad,
+            cost_prox=cost_prox,
         )
         # return psnr(beta, self.image)
 
