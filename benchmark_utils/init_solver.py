@@ -97,7 +97,7 @@ def initialize_opt(
             **opt_kwargs,
             **metric_kwargs,
         )
-    elif opt_name == "conda-vu":
+    elif opt_name == "condat-vu":
 
         y_init = linear_op.op(x_init)
 
