@@ -31,32 +31,30 @@ class Solver(BaseSolver):
         kspace_data,
         fourier_op,
         image,
-        wavelet_name="sym8",
-        nb_scales=4,
-        lambd=2 * 1e-7,
-        optimizer="pogm",
     ):
         # The arguments of this function are the results of the
         # `to_dict` method of the objective.
         # They are customizable.
+
+        print("Setting objective", self.optimizer, self.lambd, self.wavelet_name, self.nb_scales)
         self.kspace_data = kspace_data
 
         self.linear_op = WaveletN(
-            wavelet_name=wavelet_name,
-            nb_scales=nb_scales
+            wavelet_name=self.wavelet_name,
+            nb_scales=self.nb_scales
         )
 
         self.prox_op = SparseThreshold(
             Identity(),
-            lambd,
+            self.lambd,
             thresh_type="soft"
         )
-        self.grad_op = get_grad_op(fourier_op, OPTIMIZERS[optimizer], linear_op=self.linear_op)
+        self.grad_op = get_grad_op(fourier_op, OPTIMIZERS[self.optimizer], linear_op=self.linear_op)
         # load the kspace data
         self.grad_op._obs_data = kspace_data
-        self.grad_formulation = OPTIMIZERS[optimizer]
+        self.grad_formulation = OPTIMIZERS[self.optimizer]
         self.solver = initialize_opt(
-            optimizer,
+            self.optimizer,
             self.grad_op,
             self.linear_op,
             self.prox_op,
@@ -64,6 +62,9 @@ class Solver(BaseSolver):
         )
 
     def run(self, callback):
+
+        print("Running", self.solver.__class__.__name__, self.grad_formulation)
+
         if self.grad_formulation == "synthesis":
             w = self.linear_op.adj_op(self.solver._x_old)
         else:
