@@ -11,7 +11,7 @@ class Objective(BaseObjective):
     name = "MRI reconstruction"
 
     install_cmd = 'conda'
-    requirements = ['cmake', 'pip:python-pysap']
+    requirements = ['pip:python-pysap --install-option="--nosparse2D --only=pysap-mri"', 'pip:modopt']
 
     # All parameters 'p' defined here are available as 'self.p'
     # parameters = {

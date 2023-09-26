@@ -16,12 +16,12 @@ class Solver(BaseSolver):
 
     install_cmd = 'conda'
     sampling_strategy = 'callback'
-    requirements = ['cmake', 'pip:python-pysap']
+    requirements = ['pip:python-pysap --install-option="--nosparse2D --only=pysap-mri"', 'pip:modopt']
 
     # any parameter defined here is accessible as a class attribute
     parameters = {
         "optimizer": ["pogm", "fista", "condat-vu"],
-        "wavelet_name": ["HaarWaveletTransform", "sym8"],
+        "wavelet_name": ["haar", "sym8"],
         "nb_scales": [4],
         "lambd": [1e-7, 1e-8, 1e-4],
     }

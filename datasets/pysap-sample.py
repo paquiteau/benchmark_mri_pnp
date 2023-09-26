@@ -10,7 +10,7 @@ class Dataset(BaseDataset):
     name = "pysap-sample"
 
     install_cmd = 'conda'
-    requirements = ['cmake', 'pip:python-pysap']
+    requirements = ['pip:python-pysap --install-option="--nosparse2D --only=pysap-mri"', 'pip:modopt']
 
     # List of parameters to generate the datasets. The benchmark will consider
     # the cross product for each key in the dictionary.
