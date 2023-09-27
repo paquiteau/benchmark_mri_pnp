@@ -141,7 +141,7 @@ def get_cartesian_mask(
     slicer = [slice(None, None, None)] * len(shape)
     if accel_axis < 0:
         accel_axis = len(shape) + accel_axis
-    if not (0 < accel_axis < len(shape)):
+    if not (0 <= accel_axis < len(shape)):
         raise ValueError(
             "accel_axis should be lower than the number of spatial dimension."
         )
