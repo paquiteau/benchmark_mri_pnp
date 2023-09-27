@@ -41,7 +41,8 @@ class Solver(BaseSolver):
 
         self.linear_op = WaveletN(
             wavelet_name=self.wavelet_name,
-            nb_scales=self.nb_scales
+            nb_scales=self.nb_scales,
+            dim=len(image.shape),
         )
 
         self.prox_op = SparseThreshold(
