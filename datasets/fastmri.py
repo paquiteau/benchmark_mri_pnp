@@ -57,8 +57,7 @@ class fastMRI(BaseDataset):
             target_torch, images, y, y_hat, Smaps, mask = batch
             y_hat = torch.cat(y_hat, dim = 0).unsqueeze(0)
 
-            return dict(kspace_data=y, kspace_data_hat=y_hat, target=target_torch, images=images, smaps=Smaps, mask=mask)
-
+            return dict(kspace_data=y, kspace_data_hat=y_hat, target=target_torch, images=images, smaps=Smaps, mask=mask, kspace_mask=samples_loc)
 
 
 def to_complex_tensor(tensor):
