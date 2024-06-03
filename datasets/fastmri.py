@@ -12,7 +12,9 @@ with safe_import_context() as import_ctx:
     from fastmri.data import transforms, mri_data
     from fastmri.data.transforms import to_tensor, complex_center_crop
     import fastmri.data.transforms as T
-    from physic import corrupt_coils 
+    from benchmark_utils.physic import Nufft
+    from benchmark_utils.kspace_sampling import get_samples
+    physic import corrupt_coils 
     import cv2
     from fastmri.data.subsample import MaskFunc
 
@@ -24,10 +26,22 @@ path = '/neurospin/optimed/BenjaminLapostolle/fast-mri_smal/'
 
 class fastMRI(BaseDataset):
 
+    parameters = {
+        "idx": [0],
+        "Nc": [25],
+        "Ns": [1000],
+        "traj": [3],
+        "density": ["pipe"]
+                  }
+    requirements = ['fastmri', 'torch', 'cv2', 'mrinufft', 'deepinv']
+
     def get_data(self, idx = 0):
 
+        traj = ['sparkling', 'cartesian', 'radial', 'spiral', 'cones', 'sinusoide', 'propeller', 'rings', 'rosette', 'polar_lissajous', 'lissajous', 'waves']
+        samples_loc = get_samples(traj[self.traj], Nc = self.Nc, Ns = self.Ns)
+        physics = Nufft((320,320), samples_loc, density=self.density, real=False, Smaps = None)
 
-        data_transform = ClassicDataTransform(which_challenge="multicoil", Smaps = Smaps, physics = physics)
+        data_transform = ClassicDataTransform(which_challenge="multicoil", Smaps = True, physics = physics)
         dataset = mri_data.SliceDataset(
             root=pathlib.Path(path),
             transform=data_transform,
