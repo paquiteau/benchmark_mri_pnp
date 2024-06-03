@@ -20,7 +20,7 @@ class Dataset(BaseDataset):
     #         (5000, 200)]
     # }
     parameters = {
-        "datadir": ["./pysap_data"]
+        "datadir": ["pysap_data"]
     }
 
     def __init__(self, datadir):

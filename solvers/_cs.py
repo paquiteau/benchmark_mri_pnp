@@ -81,7 +81,7 @@ class Solver(BaseSolver):
             else:
                 w = self.solver._x_new
             self.w = w.copy()
-            self.x = self.solver._x_new
+            self.x = self.solver._x_new.copy()
 
     def get_result(self):
         # The outputs of this function are the arguments of the
