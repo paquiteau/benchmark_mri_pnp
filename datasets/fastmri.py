@@ -14,6 +14,7 @@ with safe_import_context() as import_ctx:
     import fastmri.data.transforms as T
     from benchmark_utils.physic import Nufft
     from benchmark_utils.kspace_sampling import get_samples
+    from benchmark_utils.utils import to_complex_tensor
     physic import corrupt_coils 
     import cv2
     from fastmri.data.subsample import MaskFunc
@@ -58,21 +59,6 @@ class fastMRI(BaseDataset):
             y_hat = torch.cat(y_hat, dim = 0).unsqueeze(0)
 
             return dict(kspace_data=y, kspace_data_hat=y_hat, target=target_torch, images=images, smaps=Smaps, mask=mask, kspace_mask=samples_loc)
-
-
-def to_complex_tensor(tensor):
-    # Check if the tensor has the expected shape
-    if tensor.shape[-1] != 2:
-        raise ValueError("The last dimension of the input tensor must have size 2 to form complex numbers.")
-    
-    # Split the tensor into real and imaginary parts
-    real_part = tensor[..., 0]
-    imaginary_part = tensor[..., 1]
-    
-    # Combine the real and imaginary parts into a complex tensor
-    complex_tensor = torch.complex(real_part, imaginary_part)
-    
-    return complex_tensor
    
 class ClassicDataTransform:
     """

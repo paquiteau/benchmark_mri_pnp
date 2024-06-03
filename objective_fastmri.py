@@ -6,13 +6,14 @@ from benchopt.stopping_criterion import SufficientProgressCriterion
 # Useful for autocompletion and install commands
 with safe_import_context() as import_ctx:
     from benchmark_utils.metrics import compute_psnr, compute_ssim
-
+    
 
 
 class Objective(BaseObjective):
     name = "MRI-reconstruction"
 
-    install_cmd = "conda"
+    # install_cmd = "conda"
+    install_cmd = 'pip'
     requirements = [
         # "pip:modopt",
         "pip:mri-nufft",
@@ -58,5 +59,5 @@ class Objective(BaseObjective):
         # They are customizable.
 
         return dict(
-            kspace_data=self.kspace_data, kspace_mask=self.kspace_mask, smaps=self.smaps
+            dict(kspace_data=self.y, kspace_data_hat=self.y_hat, target=self.target_torch, images=self.images, smaps=self.Smaps, mask=self.mask, kspace_mask=self.samples_loc)
         )
