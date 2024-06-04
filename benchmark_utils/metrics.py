@@ -18,7 +18,7 @@ def compute_ssim(imageA, imageB, mask):
         imageB = (255 * (imageB - imageB.min()) / (imageB.max() - imageB.min())).astype(np.uint8)
 
     # Compute SSIM between the two images
-    score, diff = ssim(imageA * mask, imageB * mask, full=True)
+    score, diff = ssim(imageA * mask.squeeze(0).numpy(), imageB * mask.squeeze(0).numpy(), full=True)
     return score
 
 def compute_psnr(target, x_hat):

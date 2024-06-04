@@ -2,9 +2,12 @@
 from benchopt import BaseDataset
 
 from benchopt import safe_import_context
+from typing import Dict, NamedTuple, Optional, Sequence, Tuple, Union
+import numpy as np
 
 with safe_import_context() as import_ctx:
     import torch
+    from fastmri.data.subsample import MaskFunc
     from fastmri.data import SliceDataset
     import fastmri
     import pathlib
@@ -15,28 +18,24 @@ with safe_import_context() as import_ctx:
     from benchmark_utils.physic import Nufft
     from benchmark_utils.kspace_sampling import get_samples
     from benchmark_utils.utils import to_complex_tensor
-    physic import corrupt_coils 
+    # from physic import corrupt_coils 
     import cv2
-    from fastmri.data.subsample import MaskFunc
-
-    import numpy as np
     # from data2 import ClassicDataTransform
-    from typing import Dict, NamedTuple, Optional, Sequence, Tuple, Union
 
 path = '/neurospin/optimed/BenjaminLapostolle/fast-mri_smal/'
 
-class fastMRI(BaseDataset):
-
+class Dataset(BaseDataset):
+    name = "fastmri"
     parameters = {
         "idx": [0],
-        "Nc": [25],
+        "Nc": [50],
         "Ns": [1000],
         "traj": [3],
         "density": ["pipe"]
                   }
     requirements = ['fastmri', 'torch', 'cv2', 'mrinufft', 'deepinv']
 
-    def get_data(self, idx = 0):
+    def get_data(self):
 
         traj = ['sparkling', 'cartesian', 'radial', 'spiral', 'cones', 'sinusoide', 'propeller', 'rings', 'rosette', 'polar_lissajous', 'lissajous', 'waves']
         samples_loc = get_samples(traj[self.traj], Nc = self.Nc, Ns = self.Ns)
@@ -52,14 +51,14 @@ class fastMRI(BaseDataset):
         dataloader = torch.utils.data.DataLoader(dataset)
         i = -1
         for batch in dataloader:
-            if idx != i:
+            if self.idx != i:
                 i += 1
                 continue    
-            target_torch, images, y, y_hat, Smaps, mask = batch
+            target, images, y, y_hat, Smaps, mask = batch
             y_hat = torch.cat(y_hat, dim = 0).unsqueeze(0)
 
-            return dict(kspace_data=y, kspace_data_hat=y_hat, target=target_torch, images=images, smaps=Smaps, mask=mask, kspace_mask=samples_loc)
-   
+            return dict(kspace_data=y, kspace_data_hat=y_hat, target=target, images=images, smaps=Smaps, mask=mask, kspace_mask=samples_loc)
+  
 class ClassicDataTransform:
     """
     Data Transformer for training U-Net models.

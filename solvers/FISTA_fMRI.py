@@ -1,4 +1,6 @@
 from benchopt import BaseSolver, safe_import_context
+from benchopt.stopping_criterion import SingleRunCriterion, SufficientProgressCriterion
+import pdb 
 
 with safe_import_context() as import_ctx:
 
@@ -12,37 +14,39 @@ with safe_import_context() as import_ctx:
 
 class Solver(BaseSolver):
 
+    name = "FISTA"
+    sampling_strategy = "callback"
     parameters = {
         'density': ['pipe'],
         'norm_init': [True],
-        'norm_prior': [True, False]
+        'norm_prior': [True],
+        'sigma': [1e-5, 1e-4]
     }
+    stopping_criterion = SufficientProgressCriterion(patience=5)
 
-    def set_objective(self, kspace_data_hat, images, smaps, mask, samples_loc):
+    def set_objective(self, kspace_data_hat, images, smaps, mask, kspace_mask, **kwargs):
 
         self.kspace_data_hat = kspace_data_hat
         self.images = images
         self.smaps = smaps 
-        self.samples_loc = samples_loc
+        self.kspace_mask = kspace_mask
         self.mask = mask
+        self.x_estimate = None
 
-    def run(self, max_iter):
+        self.physic_mcoil = Nufft((320,320), self.kspace_mask, density=self.density, real=False, Smaps = self.smaps.squeeze(0).numpy())
 
-        physic_mcoil = Nufft((320,320), self.samples_loc, density=self.density, real=False, Smaps = self.smaps.squeeze(0).numpy())
-
-        y = self.kspace_data_hat
-        back = physic_mcoil.A_adjoint(y)
-        if self.init_norm:
-            back = match_image_stats(to_complex_tensor(self.images[0]), back) ### to better initialize the fista algorithm
+        self.y = self.kspace_data_hat
+        self.back = self.physic_mcoil.A_adjoint(self.kspace_data_hat)
+        if self.norm_init:
+            self.back = match_image_stats(to_complex_tensor(self.images[0]), self.back) ### to better initialize the fista algorithm
             ### here we normalize the reverse image in the problem so it has the same statistics as the images we used
             ### to produce the y_hat, ie the kspace target
 
-        if stepsize is None:
-            stepsize = 1 / physic_mcoil.nufft.get_lipschitz_cst(max_iter = 20)
+        self.stepsize = 1 / self.physic_mcoil.nufft.get_lipschitz_cst(max_iter = 20)
 
-        data_fidelity = L2()
-        a = 3  
-        sigma = 0.00001
+        self.data_fidelity = L2()
+        self.a = 3  
+        # self.sigma = 0.001
         # sigma = 0
         # stepsize = 0.1
         
@@ -51,55 +55,40 @@ class Solver(BaseSolver):
         wav = WaveletDictDenoiser(non_linearity="soft", level=6, list_wv=['db4', 'db8'], max_iter=15)
 
         device = 'cuda'
-        denoiser = ComplexDenoiser(wav, norm).to(device)
-            
+        self.denoiser = ComplexDenoiser(wav, self.norm_prior).to(device)
         # Initialize algo variables
-        x_cur = back.clone()
-        w = back.clone()
-        u = back.clone()
-        
+        self.x_cur = self.back.clone()
+        self.w = self.back.clone()
+        self.u = self.back.clone()
+        print('end of set objective')
         # Lists to store the data fidelity and prior values
-        data_fidelity_vals = []
-        prior_vals = []
-        L_x = [x_cur.clone()]
+        # data_fidelity_vals = []
+        # prior_vals = []
+        # L_x = [x_cur.clone()]
 
         # FISTA iteration
-        with tqdm(total=max_iter) as pbar:
-            for k in range(max_iter):
-        
-                tk = (k + a - 1) / a
-                tk_ = (k + a) / a
-        
-                x_prev = x_cur.clone()
-        
-                x_cur = w - stepsize * data_fidelity.grad(w, y, physic_mcoil)
-                x_cur = denoiser(x_cur, sigma * stepsize)
-        
-                w = (1 - 1 / tk) * x_cur + 1 / tk * u
-        
-                u = x_prev + tk * (x_cur - x_prev)
-        
-                crit = torch.linalg.norm(x_cur.flatten() - x_prev.flatten())
+        # while callback():
+        self.k = 0
+    
 
-                # Compute and store data fidelity
-                data_fidelity_val = data_fidelity(w, y, physic_mcoil)
-                data_fidelity_vals.append(data_fidelity_val.item())
 
-                # Compute and store prior value (for the denoiser)
-                prior_val = sigma * stepsize * torch.sum(torch.abs(denoiser(x_cur, sigma * stepsize)))
-                prior_vals.append(prior_val.item())
-        
-                pbar.set_description(f'Iteration {k}, criterion = {crit:.4f}')
-                pbar.update(1)
-                if k >= 0:
-                    L_x.append(x_cur)
-        
-        x_hat = x_cur.clone()
-        # return x_hat, data_fidelity_vals, prior_vals, L_x
-        self.x_estimate = x_hat
+    def run(self, callback):
+        self.x_prev = self.x_cur.clone()
+        while callback():        
+            tk = (self.k + self.a - 1) / self.a
+           # tk_ = (self.k + self.a) / self.a
+    
+            self.x_prev = self.x_cur.clone()
 
+            self.x_cur = self.w - self.stepsize * self.data_fidelity.grad(self.w, self.y, self.physic_mcoil)
+            self.x_cur = self.denoiser(self.x_cur, self.sigma * self.stepsize)
+    
+            self.w = (1 - 1 / tk) * self.x_cur + 1 / tk * self.u
+            self.u = self.x_prev + tk * (self.x_cur - self.x_prev)
+            self.k += 1
+                 
     def get_result(self):
-        return {'x_estimate':self.x_estimate}
+        return {'x_estimate': self.x_cur}
     
 
 class ComplexDenoiser(torch.nn.Module):

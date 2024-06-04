@@ -5,25 +5,22 @@ from benchopt.stopping_criterion import SufficientProgressCriterion
 # Protect import to allow manipulating objective without importing library
 # Useful for autocompletion and install commands
 with safe_import_context() as import_ctx:
-    from modopt.math.metrics import psnr, ssim, mse
-    from modopt.opt.linear import WaveletTransform
-    from modopt.base.backend import get_backend
-    from mrinufft import get_operator
-
-    from benchmark_utils.sure_prox import AutoWeightedSparseThreshold
-    from benchmark_utils.gradients import GradSynthesis
+    from benchmark_utils.metrics import compute_psnr, compute_ssim
+    import pdb
 
 
 class Objective(BaseObjective):
-    name = "MRI-reconstruction"
+    
+    name = "fastmri"
 
-    install_cmd = "conda"
+    # install_cmd = "conda"
+    install_cmd = 'pip'
     requirements = [
-        "pip:modopt",
+        # "pip:modopt",
         "pip:mri-nufft",
         "pip:cupy",
         "pip:ptwt",
-        "pip:pywavelets",
+        # "pip:pywavelets",
     ]
     # All parameters 'p' defined here are available as 'self.p'
     # parameters = {
@@ -32,25 +29,32 @@ class Objective(BaseObjective):
 
     def get_one_result(self):
         # Return one solution. This should be compatible with 'self.evaluate_results'.
-        xp, _ = get_backend(self.backend)
-        return xp.zeros(self.image.shape)
+        return np.zeros(self.target.squeeze(0).shape)
 
-    def set_data(self, kspace_data, kspace_mask, image, smaps):
+    # def set_data(self, kspace_data, kspace_data_hat, target, kspace_mask, images, mask, smaps):
+    def set_data(self, kspace_data, kspace_data_hat, target, kspace_mask, images, mask, smaps):
+
         # The keyword arguments of this function are the keys of the `data`
         # dict in the `get_data` function of the dataset.
         # They are customizable.
         self.kspace_data = kspace_data
+        self.kspace_data_hat = kspace_data_hat
         self.kspace_mask = kspace_mask
-        self.image = image
+        self.target = target
+        self.mask = mask
+        self.images = images
         self.smaps = smaps
+        
 
-    def evaluate_result(self, alpha_estimate, x_estimate, cost):
+    def evaluate_result(self, x_estimate):
         # The arguments of this function are the outputs of the
         # `get_result` method of the solver.
         # They are customizable.
         ret_dict = dict(
-            value=cost,
-            psnr=psnr(x_estimate, self.image),
+            value=-compute_psnr(self.target, x_estimate),
+            # value=compute_ssim(self.target, x_estimate, self.mask),
+            ssim=compute_ssim(self.target, x_estimate, self.mask),
+            psnr = compute_psnr(self.target, x_estimate)
         )
         return ret_dict
 
@@ -60,5 +64,9 @@ class Objective(BaseObjective):
         # They are customizable.
 
         return dict(
-            kspace_data=self.kspace_data, kspace_mask=self.kspace_mask, smaps=self.smaps
+            dict(kspace_data=self.kspace_data, kspace_data_hat=self.kspace_data_hat, target=self.target, images=self.images, smaps=self.smaps, mask=self.mask, kspace_mask=self.kspace_mask)
         )
+    
+    def save_final_results(self, x_estimate):
+        return x_estimate
+
