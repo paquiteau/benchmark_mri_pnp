@@ -54,6 +54,9 @@ class Objective(BaseObjective):
         )
         return ret_dict
 
+    def save_final_results(self, alpha_estimate, x_estimate, cost):
+        return x_estimate
+
     def get_objective(self):
         # The output of this function are the keyword arguments
         # for the `set_objective` method of the solver.
