@@ -22,7 +22,7 @@ from mpl_toolkits.axes_grid1 import ImageGrid
 import torch
 
 # %%
-BENCHMARK = "../outputs/benchopt_run_2024-06-04_10h52m24.parquet"
+BENCHMARK = "../outputs/benchopt_run_2024-06-05_17h43m20.parquet"
 
 
 # %%
@@ -81,7 +81,7 @@ def plot_grid_results(benchmark_file, max_cols=10, figsize=(10,10)):
     fig = plt.figure(figsize=figsize)
     max_cols = 10
     n_img = len(df["solver_name"].unique())
-    ncols = min(n_img, max_col)
+    ncols = min(n_img, max_cols)
     nrows = (n_img // max_cols) + 1
     
     grid = ImageGrid(fig, 111, nrows_ncols=(nrows,ncols), axes_pad=0.1)
@@ -103,3 +103,5 @@ def plot_grid_results(benchmark_file, max_cols=10, figsize=(10,10)):
 
 # %%
 plot_grid_results(BENCHMARK)
+
+# %%
