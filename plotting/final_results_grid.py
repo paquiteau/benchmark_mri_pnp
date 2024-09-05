@@ -22,7 +22,7 @@ from mpl_toolkits.axes_grid1 import ImageGrid
 import torch
 
 # %%
-BENCHMARK = "../outputs/benchopt_run_2024-06-04_10h52m24.parquet"
+BENCHMARK = "../outputs/benchopt_run_2024-06-04_18h05m06.parquet"
 
 
 # %%
@@ -79,12 +79,11 @@ def plot_grid_results(benchmark_file, max_cols=10, figsize=(10,10)):
     var_params_names = df.columns[df.apply(pd.Series.nunique) != 1]
     
     fig = plt.figure(figsize=figsize)
-    max_cols = 10
     n_img = len(df["solver_name"].unique())
-    ncols = min(n_img, max_col)
+    ncols = min(n_img, max_cols)
     nrows = (n_img // max_cols) + 1
     
-    grid = ImageGrid(fig, 111, nrows_ncols=(nrows,ncols), axes_pad=0.1)
+    grid = ImageGrid(fig, 111, nrows_ncols=(nrows,ncols), axes_pad=0.2)
     
     for ax, solver_name in zip(grid, df["solver_name"].unique()):
         
@@ -97,9 +96,11 @@ def plot_grid_results(benchmark_file, max_cols=10, figsize=(10,10)):
         ax.imshow(img, cmap="gray", origin='lower')
         ax.axis('off')
         sub_df
-        ax.set_title(" ".join([f"{k}={v}" for k,v in filter_name.items()]))
+        ax.text(0,310," ".join([f"{k}={v}" for k,v in filter_name.items()]), color="red")
     return fixed_params
 
 
 # %%
-plot_grid_results(BENCHMARK)
+plot_grid_results(BENCHMARK, max_cols=4, figsize=(20,20))
+
+# %%

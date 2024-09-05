@@ -2,6 +2,8 @@
 .pytest_cache
 __pycache__
 __cache__
+.mypy_cache/
+.ropeproject/
 *.egg-info
 .coverage
 **/outputs

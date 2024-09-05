@@ -1,6 +1,6 @@
 
 Benchmark for MRI reconstruction algorithms
-=====================
+===========================================
 |Build Status| |Python 3.6+|
 
 Benchopt is a package to simplify and make more transparent and
@@ -31,3 +31,26 @@ Use ``benchopt run -h`` for more details about these options, or visit https://b
    :target: https://github.com/bmalezieux/benchmark_mri_reconstruction/actions
 .. |Python 3.6+| image:: https://img.shields.io/badge/python-3.6%2B-blue
    :target: https://www.python.org/downloads/release/python-360/
+
+
+Description of the benchmark
+----------------------------
+This benchmark focuses on iterative reconstruction methods for 2D - Multicoil Non Cartesian MRI
+
+
+Dataset
+~~~~~~~
+FastMRI MultiCoil Test set
+
+Objective
+~~~~~~~~~
+We compute the PSNR and SSIM
+
+Solvers
+~~~~~~~
+
+- Compressed Sensing
+- Unrolled Network
+- PnP Drunet (our, with density compensation)
+- PnP Preconditioned ?
+-
