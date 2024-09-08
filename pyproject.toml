@@ -1,0 +1,37 @@
+[project]
+name = "benchmark fastmri reconstruction"
+
+
+# Formatting using black.
+[tool.black]
+
+#linting using ruff
+[tool.ruff]
+[tool.ruff.lint]
+select = ["E", "F", "B", "Q", "UP", "D"]
+
+ignore = [
+"B905", # zip() without an explicit strict= parameter
+"B028", # No explicit stacklevel keyword argument found
+"F401", # Using ``try: import ... except:`` is nice.
+]
+[tool.ruff.lint.pydocstyle]
+convention="numpy"
+
+[tool.isort]
+profile="black"
+
+[tool.pytest.ini_options]
+minversion = "6.0"
+norecursedirs = ["tests/helpers"]
+testpaths=["tests"]
+
+[tool.pylsp-mypy]
+enabled = false
+live_mode = false
+ignore_errors = true
+
+[tool.mypy]
+enable = false
+ignore_missing_imports = true
+ignore_errors = true
