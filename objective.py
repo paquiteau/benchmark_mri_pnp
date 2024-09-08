@@ -5,63 +5,52 @@ from benchopt.stopping_criterion import SufficientProgressCriterion
 # Protect import to allow manipulating objective without importing library
 # Useful for autocompletion and install commands
 with safe_import_context() as import_ctx:
-    from modopt.math.metrics import psnr, ssim, mse
-    from modopt.opt.linear import WaveletTransform
-    from modopt.base.backend import get_backend
-    from mrinufft import get_operator
-
-    from benchmark_utils.sure_prox import AutoWeightedSparseThreshold
-    from benchmark_utils.gradients import GradSynthesis
+    from benchmark_utils.metrics import compute_ssim, compute_psnr
 
 
 class Objective(BaseObjective):
     name = "MRI-reconstruction"
 
     install_cmd = "conda"
-    requirements = [
-        "pip:modopt",
-        "pip:mri-nufft",
-        "pip:cupy",
-        "pip:ptwt",
-        "pip:pywavelets",
-    ]
+    requirements = ["torch"]
     # All parameters 'p' defined here are available as 'self.p'
     # parameters = {
     #     'fit_intercept': [False],
     # }
 
-    def get_one_result(self):
-        # Return one solution. This should be compatible with 'self.evaluate_results'.
-        xp, _ = get_backend(self.backend)
-        return xp.zeros(self.image.shape)
-
-    def set_data(self, kspace_data, kspace_mask, image, smaps):
+    def set_data(self, kspace_data, physics, target):
         # The keyword arguments of this function are the keys of the `data`
         # dict in the `get_data` function of the dataset.
         # They are customizable.
         self.kspace_data = kspace_data
-        self.kspace_mask = kspace_mask
-        self.image = image
-        self.smaps = smaps
+        self.physics = physics
+        self.target = target
 
-    def evaluate_result(self, alpha_estimate, x_estimate, cost):
+    def evaluate_result(self, x_estimate, cost):
         # The arguments of this function are the outputs of the
         # `get_result` method of the solver.
         # They are customizable.
-        ret_dict = dict(
-            value=cost,
-            psnr=psnr(x_estimate, self.image),
+        psnr = compute_psnr(x_estimate, self.target)
+        ssim = compute_ssim(x_estimate, self.target)
+        return dict(
+            psnr=psnr,
+            ssim=ssim,
+            value=psnr,
+            cost=cost,
         )
-        return ret_dict
 
-    def save_final_results(self, alpha_estimate, x_estimate, cost):
+    def save_final_results(self, x_estimate, cost):
         return x_estimate
+
+    def get_one_result(self):
+        return {
+            "x_estimate": np.zeros(self.physics.nufft.shape, dtype=np.complex64),
+            "cost": None,
+        }
 
     def get_objective(self):
         # The output of this function are the keyword arguments
         # for the `set_objective` method of the solver.
         # They are customizable.
 
-        return dict(
-            kspace_data=self.kspace_data, kspace_mask=self.kspace_mask, smaps=self.smaps
-        )
+        return dict(kspace_data=self.kspace_data, physics=self.physics)
