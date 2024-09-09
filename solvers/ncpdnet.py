@@ -33,13 +33,17 @@ class Solver(BaseSolver):
             im_size=self.shape,
             dcomp=True,
             refine_smaps=True,
+            #   nufft_implementation="tensorflow-nufft",
         )
         kspace_shape = self.kspace_data.shape
         inputs = [
             tf.zeros([*kspace_shape, 1], dtype=tf.complex64),
             tf.zeros([1, 2, kspace_shape[-1]], dtype=tf.float32),
             tf.zeros([1, *self.smaps.shape], dtype=tf.complex64),
-            (tf.constant([320]), tf.ones([1, kspace_shape[-1]], dtype=tf.float32)),
+            (
+                tf.constant([*self.shape]),
+                tf.ones([1, kspace_shape[-1]], dtype=tf.float32),
+            ),
         ]
         model(inputs)
 
@@ -70,4 +74,3 @@ class Solver(BaseSolver):
             "x_estimate": self.x_estimate.numpy(),
             "cost": 0,
         }
-        
