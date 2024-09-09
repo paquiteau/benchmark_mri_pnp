@@ -22,9 +22,9 @@ DRUNET_DENOISE_PATH = os.environ.get(
 class Solver(BaseSolver):
     """Zero order solution"""
 
-    name = "FISTA"
+    name = "FISTA-wavelet"
 
-    install_cmd = "conda"
+    install_cmd = "pip"
     sampling_strategy = "callback"
     requirements = ["deepinv", "mrinufft[gpunufft]"]
     parameters = {"sigma": [1e-6]}
@@ -35,11 +35,7 @@ class Solver(BaseSolver):
     def get_next(self, stop_val):
         return stop_val + 1
 
-    def set_objective(
-        self,
-        kspace_data,
-        physics,
-    ):
+    def set_objective(self, kspace_data, physics, trajectory_name):
         self.kspace_data = kspace_data
         self.physics = physics
         kwargs_optim = dict()
@@ -71,7 +67,7 @@ class Solver(BaseSolver):
     def get_result(self):
         """Get values to pass to objective."""
         return {
-            "x_estimate": self.x_estimate,
+            "x_estimate": self.x_estimate.cpu().numpy(),
             "cost": self.cost,
         }
 

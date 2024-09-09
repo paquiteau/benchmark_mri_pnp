@@ -34,7 +34,7 @@ class Solver(BaseSolver):
     max_iter = 10
     stopping_criterion = SufficientProgressCriterion(patience=30)
 
-    def skip(self, kspace_data, physics):
+    def skip(self, kspace_data, physics, trajectory_name):
         if self.prior == "drunet" and not os.path.exists(DRUNET_PATH):
             return True, "DRUNet weights not found"
         if self.prior == "drunet-denoised" and not os.path.exists(DRUNET_DENOISE_PATH):
@@ -48,6 +48,7 @@ class Solver(BaseSolver):
         self,
         kspace_data,
         physics,
+        trajectory_name,
     ):
         self.kspace_data = kspace_data
         self.physics = physics
@@ -58,7 +59,8 @@ class Solver(BaseSolver):
         cpx_denoiser = Denoiser(denoiser)
         prior = PnP(cpx_denoiser)
         kwargs_optim["params_algo"] = get_DPIR_params(
-            noise_level_img=1e-6, n_iter=self.max_iter
+            noise_level_img=1e-6,
+            n_iter=self.max_iter,
         )
 
         self.algo = optim_builder(
@@ -97,7 +99,7 @@ class Solver(BaseSolver):
     def get_result(self):
         """Get values to pass to objective."""
         return {
-            "x_estimate": self.x_estimate,
+            "x_estimate": self.x_estimate.detach().cpu().numpy(),
             "cost": self.cost,
         }
 

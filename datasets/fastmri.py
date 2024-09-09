@@ -24,7 +24,7 @@ with safe_import_context() as import_ctx:
         initialize_2D_radial,
     )
 
-MAX_SAMPLES = 1
+MAX_SAMPLES = 100
 
 
 FASTMRI_PATH = os.environ.get(
@@ -74,10 +74,18 @@ class Dataset(BaseDataset):
         )
         rng = np.random.default_rng(42)
         if len(self.dataloader) > 0:
-            random_ids = rng.integers(0, len(self.dataloader), size=MAX_SAMPLES)
+            random_ids = rng.choice(
+                len(self.dataloader),
+                size=min(MAX_SAMPLES, len(self.dataloader)),
+                replace=False,
+            )
         else:
             raise ValueError("Empty Dataset")
         self._fastmri_id = random_ids[id]
+
+    def skip(self):
+        if self.id >= min(MAX_SAMPLES, len(self.dataloader)):
+            return True, "no such id"
 
     def get_data(self):
         target, full_kspace = self.dataloader[self._fastmri_id]
@@ -87,7 +95,6 @@ class Dataset(BaseDataset):
             torch.view_as_complex(ifft2c_new(torch.view_as_real(full_kspace)))
         )
         full_image = complex_center_crop(full_image, target.shape)
-        print(full_image.shape)
         if self.sampling == "spiral":
             samples_loc = initialize_2D_spiral(
                 int(320 / self.AF), 320, nb_revolutions=1, in_out=True
@@ -101,7 +108,12 @@ class Dataset(BaseDataset):
         # Get the kspace data
         kspace_data = physics.nufft.op(full_image)
         # TODO Add NOISE to the kspace data
-        return dict(kspace_data=kspace_data, physics=physics, target=full_image)
+        return dict(
+            kspace_data=kspace_data,
+            physics=physics,
+            target=full_image.cpu().numpy(),
+            trajectory_name=self.sampling,
+        )
 
     @staticmethod
     def get_smaps(full_kspace, full_image, crop_size):
