@@ -66,4 +66,8 @@ class Solver(BaseSolver):
         self.x_estimate = x
 
     def get_result(self):
-        return self.x_estimate.numpy()
+        return {
+            "x_estimate": self.x_estimate.numpy(),
+            "cost": 0,
+        }
+        
