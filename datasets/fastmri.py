@@ -24,7 +24,7 @@ with safe_import_context() as import_ctx:
         initialize_2D_radial,
     )
 
-MAX_SAMPLES = 100
+MAX_SAMPLES = 1
 
 
 FASTMRI_PATH = os.environ.get(
@@ -67,7 +67,7 @@ class Dataset(BaseDataset):
             root=FASTMRI_PATH,
             challenge="multicoil",
             test=False,
-            load_metadata_from_cache=True,
+            load_metadata_from_cache=False,
             save_metadata_to_cache=True,
             sample_filter=lambda x: True,
             sample_rate=1.0,
@@ -91,6 +91,8 @@ class Dataset(BaseDataset):
         target, full_kspace = self.dataloader[self._fastmri_id]
         # Get the VCC complex data
         # Get the smaps
+        target = torch.from_numpy(target)
+        full_kspace = torch.from_numpy(full_kspace)
         full_image = virtual_coil_combination_2D(
             torch.view_as_complex(ifft2c_new(torch.view_as_real(full_kspace)))
         )

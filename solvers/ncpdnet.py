@@ -34,12 +34,12 @@ class Solver(BaseSolver):
             dcomp=True,
             refine_smaps=True,
         )
-        kspace_shape = 1
+        kspace_shape = self.kspace_data.shape
         inputs = [
-            tf.zeros([1, 1, kspace_shape, 1], dtype=tf.complex64),
-            tf.zeros([1, 2, kspace_shape], dtype=tf.float32),
-            tf.zeros([1, 1, 640, 320], dtype=tf.complex64),
-            (tf.constant([320]), tf.ones([1, kspace_shape], dtype=tf.float32)),
+            tf.zeros([*kspace_shape, 1], dtype=tf.complex64),
+            tf.zeros([1, 2, kspace_shape[-1]], dtype=tf.float32),
+            tf.zeros([1, *self.smaps.shape], dtype=tf.complex64),
+            (tf.constant([320]), tf.ones([1, kspace_shape[-1]], dtype=tf.float32)),
         ]
         model(inputs)
 
@@ -50,20 +50,24 @@ class Solver(BaseSolver):
 
         self.model = model
 
-    def run(self):
+    def run(self, stopval=None):
         # Run the NCPDNet model on the kspace data
         x = self.model(
             [
-                self.kspace_data,
-                self.traj,
-                self.smaps,
+                self.kspace_data[..., None],
+                tf.transpose(self.traj)[None],
+                self.smaps[None],
                 (
                     self.shape,
-                    self.dcomp,
+                    self.dcomp[None],
                 ),
             ]
         )
         self.x_estimate = x
 
     def get_result(self):
-        return self.x_estimate.numpy()
+        return {
+            "x_estimate": self.x_estimate.numpy(),
+            "cost": 0,
+        }
+        
