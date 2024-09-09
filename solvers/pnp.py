@@ -59,7 +59,7 @@ class Solver(BaseSolver):
         cpx_denoiser = Denoiser(denoiser)
         prior = PnP(cpx_denoiser)
         kwargs_optim["params_algo"] = get_DPIR_params(
-            noise_level_img=1e-6,
+            noise_level_img=0.1,
             n_iter=self.max_iter,
         )
 
@@ -68,7 +68,7 @@ class Solver(BaseSolver):
             prior=prior,
             data_fidelity=L2(),
             early_stop=False,
-            # custom_init=get_custom_init,
+            custom_init=get_custom_init,
             max_iter=self.max_iter,
             verbose=False,
             **kwargs_optim,
@@ -148,8 +148,8 @@ def get_custom_init(y, physics):
 
     density = pipe(physics.nufft.samples, shape=physics.nufft.shape, num_iterations=20)
     density = torch.from_numpy(density)
-    est = physics.A_adjoint(y * density)
-    return {"est": (est, est.detach().clone()), "cost": None}
+    est = physics.A_dagger(y)
+    return {"est": (est, est.detach().clone())}
 
 
 def get_DPIR_params(noise_level_img, s1=0.5, lamb=2, n_iter=10):
