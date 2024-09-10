@@ -20,7 +20,7 @@ DRUNET_DENOISE_PATH = os.environ.get(
 
 
 class Solver(BaseSolver):
-    """Zero order solution"""
+    """PnP Iteration using PGD or FISTA with DRUNet prior."""
 
     name = "PNP"
 
@@ -28,10 +28,10 @@ class Solver(BaseSolver):
     sampling_strategy = "callback"
     requirements = ["deepinv", "mrinufft[gpunufft]"]
     parameters = {
-        "iteration": ["HQS", "PGD", "FISTA"],
+        "iteration": ["PGD", "FISTA"],
         "prior": ["drunet", "drunet-denoised"],
     }
-    max_iter = 10
+    max_iter = 50
     stopping_criterion = SufficientProgressCriterion(patience=30)
 
     def skip(self, kspace_data, physics, trajectory_name):
@@ -58,10 +58,11 @@ class Solver(BaseSolver):
         )
         cpx_denoiser = Denoiser(denoiser)
         prior = PnP(cpx_denoiser)
-        kwargs_optim["params_algo"] = get_DPIR_params(
-            noise_level_image=0.1,
-            n_iter=self.max_iter,
-        )
+        kwargs_optim["params_algo"] = {
+            "lambda": 2,  # f + lambda * g(x, g_params)
+            "g_param": 0.1,
+            "stepsize": 1 / self.physics.nufft.get_lipschitz_cst(10),
+        }
 
         self.algo = optim_builder(
             iteration=self.iteration,
@@ -144,15 +145,12 @@ def load_drunet(path_weights):
 
 
 def get_custom_init(y, physics):
-    from mrinufft.density import pipe
 
-    density = pipe(physics.nufft.samples, shape=physics.nufft.shape, num_iterations=20)
-    density = torch.from_numpy(density)
     est = physics.A_dagger(y)
     return {"est": (est, est.detach().clone())}
 
 
-def get_DPIR_params(noise_level_img, s1=0.5, lamb=2, n_iter=10):
+def get_DPIR_params(s1=0.5, s2=0.1, lamb=2, n_iter=10):
     r"""
     Default parameters for the DPIR Plug-and-Play algorithm.
 

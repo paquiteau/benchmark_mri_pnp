@@ -5,9 +5,11 @@ solver:
   - HQS-grid:
       iteration: HQS
       prior: drunet-denoised
-      s1: [0.5, 0.4, 0.3, 0.2, 0.1]
+        # s1: [0.5, 0.4, 0.3, 0.2, 0.1]
+      s1: [0.5, 0.01]
       s2: [0.09, 0.05]
-      lamb: [0.5, 1, 2, 4.34, 5, 7, 10]
+      lamb: [4.34]
+        # lamb: [0.5, 1, 2, 4.34, 5, 7, 10]
 
 dataset:
   - fastmri-mc:

@@ -20,7 +20,7 @@ DRUNET_DENOISE_PATH = os.environ.get(
 
 
 class Solver(BaseSolver):
-    """Zero order solution"""
+    """FISTA Wavelet."""
 
     name = "FISTA-wavelet"
 
@@ -28,7 +28,7 @@ class Solver(BaseSolver):
     sampling_strategy = "callback"
     requirements = ["deepinv", "mrinufft[gpunufft]"]
     parameters = {"sigma": [1e-6]}
-    max_iter = 30
+    max_iter = 50
     a = 3  # From Chambolle's FISTA
     stopping_criterion = SufficientProgressCriterion(patience=30)
 
@@ -38,7 +38,6 @@ class Solver(BaseSolver):
     def set_objective(self, kspace_data, physics, trajectory_name):
         self.kspace_data = kspace_data
         self.physics = physics
-        kwargs_optim = dict()
         wavelet = WaveletDictDenoiser(non_linearity="soft", level=6, list_wv=["sym8"])
         self.denoiser = ComplexDenoiser(wavelet, True).to("cuda")
         self.data_fidelity = L2()
@@ -46,7 +45,7 @@ class Solver(BaseSolver):
     def run(self, callback):
         with torch.no_grad():
             # x_cur = get_custom_init(self.kspace_data, self.physics)
-            x_cur = self.physics.A_adjoint(self.kspace_data)
+            x_cur = self.physics.A_dagger(self.kspace_data)
             self.stepsize = self.physics.nufft.get_lipschitz_cst()
             self.x_estimate = x_cur.clone()
             z = self.x_estimate.detach().clone()
@@ -104,12 +103,3 @@ class ComplexDenoiser(torch.nn.Module):
         else:
             denoised = denoised_batch[0:1, ...] + 1j * denoised_batch[1:2, ...]
         return denoised.to("cpu")
-
-
-def get_custom_init(y, physics):
-    from mrinufft.density import pipe
-
-    density = pipe(physics.nufft.samples, shape=physics.nufft.shape, num_iterations=20)
-    density = torch.from_numpy(density)
-    est = physics.A_adjoint(y * density)
-    return {"est": (est, est.detach().clone()), "cost": None}

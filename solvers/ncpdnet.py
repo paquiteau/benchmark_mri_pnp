@@ -6,6 +6,12 @@ with safe_import_context() as import_ctx:
     from fastmri_recon.models.subclassed_models.ncpdnet import NCPDNet
     import tensorflow as tf
 
+    # don't use the full GPU memory
+    gpus = tf.config.experimental.list_physical_devices("GPU")
+    for gpu in gpus:
+        tf.config.experimental.set_memory_growth(device=gpu, enable=True)
+
+
 proj_dir = Path(__file__).parent.parent
 
 
@@ -20,7 +26,7 @@ class Solver(BaseSolver):
 
     def set_objective(self, kspace_data, physics, trajectory_name):
         # Convert the kspace data from torch to tf
-        self.kspace_data = tf.convert_to_tensor(kspace_data.cpu().numpy())
+        self.kspace_data = tf.convert_to_tensor(kspace_data.cpu().numpy()) * 1e6
         self.traj = tf.convert_to_tensor(physics.nufft.samples)
         self.smaps = tf.convert_to_tensor(physics.nufft.smaps)
         self.shape = physics.nufft.shape

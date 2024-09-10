@@ -20,7 +20,7 @@ DRUNET_DENOISE_PATH = os.environ.get(
 
 
 class Solver(BaseSolver):
-    """Zero order solution"""
+    """HQS with PNP."""
 
     name = "HQS-grid"
 
@@ -30,11 +30,11 @@ class Solver(BaseSolver):
     parameters = {
         "iteration": ["HQS"],
         "prior": ["drunet-denoised"],
-        "s1": [0.5],
-        "s2": [0.5],
+        "s1": [0.1],
+        "s2": [0.05],
         "lamb": [2],
     }
-    max_iter = 10
+    max_iter = 50
     stopping_criterion = SufficientProgressCriterion(patience=30)
 
     def skip(self, kspace_data, physics, trajectory_name):

@@ -51,7 +51,7 @@ class Objective(BaseObjective):
         )
 
     def save_final_results(self, x_estimate, cost):
-        return x_estimate
+        return (x_estimate, self.target)
 
     def get_one_result(self):
         return {
