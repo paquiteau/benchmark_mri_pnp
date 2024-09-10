@@ -58,10 +58,30 @@ class Solver(BaseSolver):
         )
         cpx_denoiser = Denoiser(denoiser)
         prior = PnP(cpx_denoiser)
-        kwargs_optim["params_algo"] = get_DPIR_params(
-            noise_level_img=0.1,
-            n_iter=self.max_iter,
-        )
+
+        if self.iteration == "HQS":
+            kwargs_optim["params_algo"] = get_DPIR_params(
+                noise_level_img=0.1,
+                n_iter=self.max_iter,
+            )
+        elif self.iteration in ["PGD", "FISTA"]:
+            kwargs_optim["params_algo"] = {
+                "lambda": 2,  # f + lambda * g(x, g_params)
+                "g_param": 0.1,
+                "stepsize": 1 / self.physics.nufft.get_lipschitz_cst(10),
+            }
+            # What does the parameters mean ?
+            # PNP-PGD:
+            # u = x - stepsize * grad_f(x)
+            # x = G_{g_param}(u)
+            #
+            # PGD-wavelet :
+            # u = x - stepsize * grad_f(x)
+            # x = G_{lambda*stepsize}(u)
+            #
+            # HQS - PNP
+            # u = prox_f(x, stepsize*lambda)
+            # x = G_{g_param}(u)
 
         self.algo = optim_builder(
             iteration=self.iteration,
