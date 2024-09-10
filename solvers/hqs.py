@@ -22,14 +22,17 @@ DRUNET_DENOISE_PATH = os.environ.get(
 class Solver(BaseSolver):
     """Zero order solution"""
 
-    name = "PNP"
+    name = "HQS-grid"
 
     install_cmd = "conda"
     sampling_strategy = "callback"
     requirements = ["deepinv", "mrinufft[gpunufft]"]
     parameters = {
-        "iteration": ["HQS", "PGD", "FISTA"],
-        "prior": ["drunet", "drunet-denoised"],
+        "iteration": ["HQS"],
+        "prior": ["drunet-denoised"],
+        "s1": [0.5],
+        "s2": [0.5],
+        "lamb": [2],
     }
     max_iter = 10
     stopping_criterion = SufficientProgressCriterion(patience=30)
@@ -59,7 +62,9 @@ class Solver(BaseSolver):
         cpx_denoiser = Denoiser(denoiser)
         prior = PnP(cpx_denoiser)
         kwargs_optim["params_algo"] = get_DPIR_params(
-            noise_level_image=0.1,
+            s1=self.s1,
+            s2=self.s2,
+            lamb=self.lamb,
             n_iter=self.max_iter,
         )
 
@@ -152,14 +157,12 @@ def get_custom_init(y, physics):
     return {"est": (est, est.detach().clone())}
 
 
-def get_DPIR_params(noise_level_img, s1=0.5, lamb=2, n_iter=10):
+def get_DPIR_params(s1=0.5, s2=0.01, lamb=2, n_iter=10):
     r"""
     Default parameters for the DPIR Plug-and-Play algorithm.
 
     :param float noise_level_img: Noise level of the input image.
     """
-    s1 = 0.5
-    s2 = noise_level_img
     sigma_denoiser = np.logspace(np.log10(s1), np.log10(s2), n_iter).astype(np.float32)
-    stepsize = (sigma_denoiser / max(0.01, noise_level_img)) ** 2
+    stepsize = (sigma_denoiser / max(0.01, s2)) ** 2
     return {"lambda": lamb, "g_param": list(sigma_denoiser), "stepsize": list(stepsize)}
