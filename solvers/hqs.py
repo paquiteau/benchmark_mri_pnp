@@ -100,6 +100,7 @@ class Solver(BaseSolver):
                     self.x_estimate, self.cost = self._get_estimate(x_cur)
                 if itr >= self.max_iter:
                     break
+        del self.algo
 
     def get_result(self):
         """Get values to pass to objective."""
