@@ -22,8 +22,12 @@ from mpl_toolkits.axes_grid1 import ImageGrid
 import torch
 
 # %%
-BENCHMARK = "../outputs/benchopt_run_2024-09-08_15h47m55.csv"
+import glob 
+BENCHMARK = sorted(glob.glob("../outputs/*.parquet"))[-1]
 
+
+# %%
+#BENCHMARK = "../outputs/benchopt_run_2024-09-09_11h22m24.parquet"
 
 # %%
 def fmt_dict(**kwargs):
@@ -46,7 +50,7 @@ def parse_name(name_str):
 
 # %%
 # Define a function to extract parameters
-df = pd.read_csv(BENCHMARK)
+df = pd.read_parquet(BENCHMARK)
 # Create a DataFrame from the Series with parsed parameters
 df = pd.concat([pd.DataFrame(list(df['solver_name'].apply(parse_name))), df], axis=1)
 df = df.convert_dtypes()
@@ -64,7 +68,7 @@ df.columns
 # %%
 
 def plot_grid_results(benchmark_file, max_cols=10, figsize=(10,10)):
-    df = pd.read_csv(benchmark_file)
+    df = pd.read_parquet(benchmark_file)
     
     # Create a DataFrame from the Series with parsed parameters
     df = pd.concat([pd.DataFrame(list(df['solver_name'].apply(parse_name))), df], axis=1)
@@ -92,7 +96,7 @@ def plot_grid_results(benchmark_file, max_cols=10, figsize=(10,10)):
         filter_name = {k:v for k, v in args.items() if k in var_params_names}
         result_file = list(sub_df["final_results"])[0]
         img = np.load(Path(result_file).resolve(), allow_pickle=True)
-        img = img.squeeze(0).squeeze(0).abs().numpy()
+        img = abs(img.squeeze())
         ax.imshow(img, cmap="gray", origin='lower')
         psnr_max = sub_df["objective_psnr"].max()
         ax.set_title(f"PSNR={psnr_max:.3}db")
