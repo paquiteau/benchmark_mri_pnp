@@ -76,7 +76,7 @@ def plot_one_dataset(df, max_cols, figsize=(10,10)):
     n_img = len(df["solver_name"].unique())
     ncols = min(n_img, max_cols) + 1
     nrows = int(np.ceil(n_img / max_cols))
-    grid = ImageGrid(fig, 111, nrows_ncols=(nrows*2,ncols), axes_pad=0.2,
+    grid = ImageGrid(fig, 111, nrows_ncols=(nrows*2,ncols), axes_pad=0.1,
                      cbar_location="right",
                     cbar_mode="edge",
                     cbar_size="7%",
