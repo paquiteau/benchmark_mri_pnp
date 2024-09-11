@@ -24,7 +24,6 @@ class Objective(BaseObjective):
         self.kspace_data = kspace_data
         self.physics = physics
         self.target = target
-        self.mask =
         self.trajectory_name = trajectory_name
 
     def get_objective(self):

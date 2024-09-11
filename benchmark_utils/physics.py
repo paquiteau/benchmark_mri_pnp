@@ -17,6 +17,7 @@ class Nufft(LinearPhysics):
         samples_loc,
         density=None,
         real=False,
+        n_coils=1,
         Smaps=None,
         **kwargs
     ):
@@ -26,7 +27,6 @@ class Nufft(LinearPhysics):
         if density is not None:
             if density == 'voronoi':
                 density = voronoi(samples_loc.reshape(-1, 2))
-        n_coils = 1
         if Smaps is not None:
             n_coils = len(Smaps)
         self.nufft = NufftOperator(samples_loc.reshape(-1, 2), shape=img_size, density=density, n_coils=n_coils, squeeze_dims=False, smaps = Smaps)

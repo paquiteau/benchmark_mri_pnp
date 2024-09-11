@@ -95,27 +95,26 @@ class Dataset(BaseDataset):
             target = torch.from_numpy(target)
         if isinstance(full_kspace, np.ndarray):
             full_kspace = torch.from_numpy(full_kspace)
-        full_image = virtual_coil_combination_2D(
-            torch.view_as_complex(ifft2c_new(torch.view_as_real(full_kspace)))
-        )
-        full_image = complex_center_crop(full_image, target.shape)
+        full_image_channels = torch.view_as_complex(ifft2c_new(torch.view_as_real(full_kspace)))
+        full_image_channels = complex_center_crop(full_image_channels, target.shape)
+        full_image = virtual_coil_combination_2D(full_image_channels)
         if self.sampling == "spiral":
             samples_loc = initialize_2D_spiral(
                 int(320 / self.AF), 320, nb_revolutions=1, in_out=True
             )
         if self.sampling == "radial":
             samples_loc = initialize_2D_radial(int(320 / self.AF), 320, in_out=True)
-
-        smaps = self.get_smaps(full_kspace, full_image, crop_size=target.shape)
+        self.smaps = self.get_smaps(full_kspace, full_image, crop_size=target.shape)
         # Initialize the physics model
-        physics = self.get_physics(target.shape, samples_loc, smaps)
+        physics_sense = self.get_physics(target.shape, samples_loc, smaps=self.smaps)
+        physics = self.get_physics(target.shape, samples_loc, n_coils=full_kspace.shape[0])
         # Get the kspace data
-        kspace_data = physics.nufft.op(full_image)
+        kspace_data = physics.nufft.op(full_image_channels)
         # TODO Add NOISE to the kspace data
         return dict(
             kspace_data=kspace_data,
-            physics=physics,
-            target=full_image.cpu().numpy(),
+            physics=physics_sense,
+            target=target.cpu().numpy(),
             trajectory_name=self.sampling,
         )
 
@@ -137,8 +136,8 @@ class Dataset(BaseDataset):
         return Smaps_low.detach().cpu().numpy()
 
     @staticmethod
-    def get_physics(image_shape, samples_loc, smaps):
-        physics = Nufft(image_shape, samples_loc, Smaps=smaps, density="pipe")
+    def get_physics(image_shape, samples_loc, n_coils=1, smaps=None):
+        physics = Nufft(image_shape, samples_loc, n_coils=n_coils, Smaps=smaps, density="pipe")
         return physics
 
 
