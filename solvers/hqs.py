@@ -29,7 +29,7 @@ class Solver(BaseSolver):
     requirements = ["deepinv", "mrinufft[gpunufft]"]
     parameters = {
         "iteration": ["HQS"],
-        "prior": ["drunet-denoised"],
+        "prior": ["drunet", "drunet-denoised"],
         "s1": [0.1],
         "s2": [0.05],
         "lamb": [2],

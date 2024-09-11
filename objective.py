@@ -24,6 +24,7 @@ class Objective(BaseObjective):
         self.kspace_data = kspace_data
         self.physics = physics
         self.target = target
+        self.mask =
         self.trajectory_name = trajectory_name
 
     def get_objective(self):
@@ -37,12 +38,12 @@ class Objective(BaseObjective):
             trajectory_name=self.trajectory_name,
         )
 
-    def evaluate_result(self, x_estimate, cost):
+    def evaluate_result(self, x_estimate, cost, scale_target=1.0):
         # The arguments of this function are the outputs of the
         # `get_result` method of the solver.
         # They are customizable.
-        psnr = compute_psnr(self.target, x_estimate.squeeze())
-        ssim = compute_ssim(self.target, x_estimate.squeeze())
+        psnr = compute_psnr(self.target * scale_target, x_estimate.squeeze())
+        ssim = compute_ssim(self.target * scale_target, x_estimate.squeeze())
         return dict(
             psnr=psnr,
             ssim=ssim,
@@ -50,13 +51,14 @@ class Objective(BaseObjective):
             cost=cost,
         )
 
-    def save_final_results(self, x_estimate, cost):
-        return (x_estimate, self.target)
+    def save_final_results(self, x_estimate, cost, scale_target=1.0):
+        return (x_estimate / scale_target, self.target)
 
     def get_one_result(self):
         return {
             "x_estimate": np.zeros(self.physics.nufft.shape, dtype=np.complex64),
             "cost": None,
+            "scale_target": 1.0,
         }
 
 

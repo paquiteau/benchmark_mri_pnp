@@ -76,10 +76,12 @@ class Solver(BaseSolver):
                 ),
             ]
         )
+
         self.x_estimate = x
 
     def get_result(self):
         return {
             "x_estimate": self.x_estimate.numpy().squeeze(),
             "cost": 0,
+            "scale_target": 1e6,
         }

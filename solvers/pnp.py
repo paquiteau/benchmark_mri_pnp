@@ -31,7 +31,7 @@ class Solver(BaseSolver):
         "iteration": ["PGD", "FISTA"],
         "prior": ["drunet", "drunet-denoised"],
     }
-    max_iter = 50
+    max_iter = 20
     stopping_criterion = SufficientProgressCriterion(patience=30)
 
     def skip(self, kspace_data, physics, trajectory_name):
