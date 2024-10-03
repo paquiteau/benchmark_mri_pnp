@@ -22,13 +22,12 @@ DRUNET_DENOISE_PATH = os.environ.get(
 class Solver(BaseSolver):
     """HQS with PNP."""
 
-    name = "HQS-grid"
+    name = "HQS"
 
     install_cmd = "conda"
     sampling_strategy = "callback"
     requirements = ["deepinv", "mrinufft[gpunufft]"]
     parameters = {
-        "iteration": ["HQS"],
         "prior": ["drunet", "drunet-denoised"],
         "s1": [0.1],
         "s2": [0.05],
@@ -69,7 +68,7 @@ class Solver(BaseSolver):
         )
 
         self.algo = optim_builder(
-            iteration=self.iteration,
+            iteration="HQS",
             prior=prior,
             data_fidelity=L2(),
             early_stop=False,
