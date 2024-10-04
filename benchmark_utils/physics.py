@@ -1,6 +1,10 @@
 from deepinv.physics import LinearPhysics
 from mrinufft.density.geometry_based import voronoi
 import mrinufft
+from tfkbnufft.kbnufft import KbNufftModule
+from tfkbnufft.mri.dcomp_calc import calculate_density_compensator
+from tfkbnufft import kbnufft_forward, kbnufft_adjoint
+import numpy as np
 
 NufftOperator = mrinufft.get_operator("gpunufft")
 
@@ -29,6 +33,13 @@ class Nufft(LinearPhysics):
                 density = voronoi(samples_loc.reshape(-1, 2))
         if Smaps is not None:
             n_coils = len(Smaps)
+        test_im = np.ones(img_size, dtype=np.complex64)
+        test_nufft = NufftOperator(samples_loc.reshape(-1, 2), shape=img_size, density='pipe')
+        test_im_recon = test_nufft.adj_op(
+            test_nufft.op(test_im) 
+        )
+        ratio = np.mean(np.abs(test_im_recon))
+        density = test_nufft.density / ratio
         self.nufft = NufftOperator(samples_loc.reshape(-1, 2), shape=img_size, density=density, n_coils=n_coils, squeeze_dims=False, smaps = Smaps)
 
     def A(self, x):
