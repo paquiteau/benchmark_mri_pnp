@@ -95,7 +95,9 @@ class Dataset(BaseDataset):
             target = torch.from_numpy(target)
         if isinstance(full_kspace, np.ndarray):
             full_kspace = torch.from_numpy(full_kspace)
-        full_image_channels = torch.view_as_complex(ifft2c_new(torch.view_as_real(full_kspace)))
+        full_image_channels = torch.view_as_complex(
+            ifft2c_new(torch.view_as_real(full_kspace))
+        )
         full_image_channels = complex_center_crop(full_image_channels, target.shape)
         full_image = virtual_coil_combination_2D(full_image_channels)
         if self.sampling == "spiral":
@@ -107,7 +109,9 @@ class Dataset(BaseDataset):
         self.smaps = self.get_smaps(full_kspace, full_image, crop_size=target.shape)
         # Initialize the physics model
         physics_sense = self.get_physics(target.shape, samples_loc, smaps=self.smaps)
-        physics = self.get_physics(target.shape, samples_loc, n_coils=full_kspace.shape[0])
+        physics = self.get_physics(
+            target.shape, samples_loc, n_coils=full_kspace.shape[0]
+        )
         # Get the kspace data
         kspace_data = physics.nufft.op(full_image_channels)
         # TODO Add NOISE to the kspace data
@@ -137,7 +141,9 @@ class Dataset(BaseDataset):
 
     @staticmethod
     def get_physics(image_shape, samples_loc, n_coils=1, smaps=None):
-        physics = Nufft(image_shape, samples_loc, n_coils=n_coils, Smaps=smaps, density="pipe")
+        physics = Nufft(
+            image_shape, samples_loc, n_coils=n_coils, Smaps=smaps, density="pipe"
+        )
         return physics
 
 
@@ -199,7 +205,7 @@ def apply_hamming_filter(kspace, filter_size):
     - filtered_kspace: The Hamming window filtered k-space data with the same shape as input.
     """
     # Combine real and imaginary parts into a complex tensor
-    kspace_complex = torch.tensor(kspace, dtype=torch.complex64)
+    kspace_complex = kspace.clone().detach()
 
     # Create the Hamming window filter
     hamming_window_1d_h = np.hamming(filter_size[0])

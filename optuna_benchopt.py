@@ -53,6 +53,9 @@ class OptunaObjective:
         for ttype, name, args, kwargs in self.trial_params:
             new_params[name] = self._add_suggestion(trial, ttype, name, *args, **kwargs)
 
+        # prune incompatible parameters
+        if new_params["s1"] < new_params["s2"]:
+            raise optuna.TrialPruned()
         # List all datasets, objective and solvers to run based on the filters
         # provided. Merge the solver_names and forced to run all necessary solvers.
         all_runs = self.benchmark.get_all_runs(
@@ -75,13 +78,12 @@ class OptunaObjective:
         peak = []
         for kwargs in all_runs:
             results = run_one_solver(**common_kwargs, **kwargs)
-            peak_value = results[-1]["objective_psnr"]
+            peak_psnr = results[-1]["objective_psnr"]
+            peak_ssim = results[-1]["objective_ssim"]
             # Do the pruning here (if the solver gives bad results)
-            run_stats.extend(results)
-            peak.append(peak_value)
-        return np.median(peak_value)
-        # extract the best scores from the run_stats
-        return run_stats
+            peak.append((peak_psnr, peak_ssim))
+        peak = np.array(peak)
+        return np.median(peak[:, 0])  # np.max(peak[:, 1])
 
 
 def parse_sweep(sweep):
@@ -101,7 +103,6 @@ def parse_sweep(sweep):
             ),
         ):  # a=range(low, high, <step>)
             step = step[0].value if step else 0
-            print("here we are", low, high, step)
             if all(isinstance(a, int) for a in (low, high, step)):
                 return ("int", name, [low, high], {"step": step or 1})
             elif any(isinstance(a, Real) for a in (low, high, step)):
@@ -177,7 +178,16 @@ def parse_sweep(sweep):
     "The syntax is `solver_name[parameter=value]`."
     "where value can be a list, or a tuple, or `range(start, stop, [step])` or ` logrange(start, stop)`",
 )
-def main(benchmark, solver_name, dataset_names, objective_filters, sweep):
+@click.option(
+    "--optuna-trials",
+    "optuna_trials",
+    metavar="<optuna_trials>",
+    type=int,
+    default=20,
+)
+def main(
+    benchmark, solver_name, dataset_names, objective_filters, sweep, optuna_trials
+):
 
     benchmark = Benchmark(benchmark)
 
@@ -195,8 +205,13 @@ def main(benchmark, solver_name, dataset_names, objective_filters, sweep):
         benchmark, datasets, objective, solver_klass, solver_params, sweep_params
     )
     # Initialize the Optuna study
-    study = optuna.create_study()
-    study.optimize(optuna_objective, n_trials=10)
+    study = optuna.create_study(directions=["maximize"])
+    study.optimize(optuna_objective, n_trials=optuna_trials)
+
+    print("\n Number of finished trials: ", len(study.trials))
+    print("Best trial:")
+    print(study.best_trial.value)  # Show the best value.
+    print(study.best_trial.params)
 
 
 if __name__ == "__main__":

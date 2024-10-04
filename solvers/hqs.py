@@ -164,5 +164,5 @@ def get_DPIR_params(s1=0.5, s2=0.01, lamb=2, n_iter=10):
     :param float noise_level_img: Noise level of the input image.
     """
     sigma_denoiser = np.logspace(np.log10(s1), np.log10(s2), n_iter).astype(np.float32)
-    stepsize = (sigma_denoiser / max(0.01, s2)) ** 2
+    stepsize = (sigma_denoiser / max(0.001, s2)) ** 2
     return {"lambda": lamb, "g_param": list(sigma_denoiser), "stepsize": list(stepsize)}

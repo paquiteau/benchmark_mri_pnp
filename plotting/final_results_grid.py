@@ -146,7 +146,7 @@ df2
 
 # %%
 df_filter = df[~df["solver_name"].str.contains("iteration=FISTA")]
-sns.relplot(data=df_filter, x="stop_val", y="objective_ssim", hue="solver_name", kind="line", label="solver")
+sns.relplot(data=df_filter, x="stop_val", y="objective_psnr", hue="solver_name", kind="line", label="solver")
 
 # %%
 

@@ -8,6 +8,7 @@ with safe_import_context() as import_ctx:
     import torch
     from deepinv.models import WaveletDictDenoiser
     from deepinv.optim.optim_iterators import OptimIterator, fStep
+    from deepinv.optim.optim_iterators.pgd import gStepPGD, fStepPGD
     from deepinv.optim.data_fidelity import L2
     from deepinv.optim import optim_builder, PnP, Prior, BaseOptim
     from benchmark_utils.utils import stand
@@ -69,7 +70,7 @@ class Solver(BaseSolver):
         kwargs_optim["custom_init"] = get_custom_init
         kwargs_optim["max_iter"] = self.max_iter
 
-        if "pnpp" in self.iteration:
+        if "ppnp" in self.iteration:
             _, precond = self.iteration.split("-")
             df = L2()
             iterator = PreconditionedPnP(
@@ -171,6 +172,12 @@ def get_custom_init(y, physics):
     return {"est": (est, est.detach().clone())}
 
 
+def get_custom_init_ppnp(y, physics):
+
+    est = physics.A_dagger(y)
+    return {"est": (est, est.detach().clone(), torch.zeros_like(est))}
+
+
 def get_DPIR_params(s1=0.5, s2=0.1, lamb=2, n_iter=10):
     r"""
     Default parameters for the DPIR Plug-and-Play algorithm.
@@ -178,9 +185,8 @@ def get_DPIR_params(s1=0.5, s2=0.1, lamb=2, n_iter=10):
     :param float noise_level_img: Noise level of the input image.
     """
     s1 = 0.5
-    s2 = noise_level_img
     sigma_denoiser = np.logspace(np.log10(s1), np.log10(s2), n_iter).astype(np.float32)
-    stepsize = (sigma_denoiser / max(0.01, noise_level_img)) ** 2
+    stepsize = (sigma_denoiser / max(0.01, s2)) ** 2
     return {"lambda": lamb, "g_param": list(sigma_denoiser), "stepsize": list(stepsize)}
 
 
