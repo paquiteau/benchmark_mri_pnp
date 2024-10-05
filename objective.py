@@ -17,13 +17,14 @@ class Objective(BaseObjective):
     #     'fit_intercept': [False],
     # }
 
-    def set_data(self, kspace_data, physics, target, trajectory_name):
+    def set_data(self, kspace_data, physics, target, target_denoised, trajectory_name):
         # The keyword arguments of this function are the keys of the `data`
         # dict in the `get_data` function of the dataset.
         # They are customizable.
         self.kspace_data = kspace_data
         self.physics = physics
         self.target = target
+        self.target_denoised = target_denoised
         self.trajectory_name = trajectory_name
 
     def get_objective(self):
@@ -42,16 +43,24 @@ class Objective(BaseObjective):
         # `get_result` method of the solver.
         # They are customizable.
         psnr = compute_psnr(self.target * scale_target, x_estimate.squeeze())
+        psnr_denoised = compute_psnr(
+            self.target_denoised * scale_target, x_estimate.squeeze()
+        )
         ssim = compute_ssim(self.target * scale_target, x_estimate.squeeze())
+        ssim_denoised = compute_ssim(
+            self.target_denoised * scale_target, x_estimate.squeeze()
+        )
         return dict(
             psnr=psnr,
             ssim=ssim,
+            psnr_denoised=psnr_denoised,
+            ssim_denoised=ssim_denoised,
             value=psnr,
             cost=cost,
         )
 
     def save_final_results(self, x_estimate, cost, scale_target=1.0):
-        return (x_estimate / scale_target, self.target)
+        return (x_estimate / scale_target, self.target, self.target_denoised)
 
     def get_one_result(self):
         return {

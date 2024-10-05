@@ -5,7 +5,9 @@ from pathlib import Path
 import numpy as np
 import os
 
+
 with safe_import_context() as import_ctx:
+    import h5py
     import torch
     from deepinv.physics.mri import ifft2c_new
     from deepinv.datasets.fastmri import FastMRISliceDataset
@@ -30,6 +32,10 @@ MAX_SAMPLES = 1
 FASTMRI_PATH = os.environ.get(
     "FASTMRI_PATH",
     Path(__file__).parent.parent / "data" / "fastmri/multicoil_test_full",
+)
+FASTMRI_PATH_DENOISED = os.environ.get(
+    "FASTMRI_PATH",
+    Path(__file__).parent.parent / "data" / "fastmri_preprocessed/multicoil_test_full",
 )
 
 
@@ -89,6 +95,18 @@ class Dataset(BaseDataset):
 
     def get_data(self):
         target, full_kspace = self.dataloader[self._fastmri_id]
+
+        fname, dataslice = self.dataloader.sample_identifiers[self._fastmri_id]
+        fname_denoised = str(fname).replace(
+            str(FASTMRI_PATH), str(FASTMRI_PATH_DENOISED)
+        )
+        with h5py.File(fname_denoised, "r") as hf:
+            # FIXME This is only okay if we have id=0
+            target_denoised = hf["image"][:2]
+            target_denoised = np.ascontiguousarray(np.moveaxis(target_denoised, 0, -1))
+            target_denoised = torch.from_numpy(target_denoised)
+            target_denoised = torch.view_as_complex(target_denoised)
+            target_denoised = complex_center_crop(target_denoised, target.shape)
         # Get the VCC complex data
         # Get the smaps
         if isinstance(target, np.ndarray):
@@ -109,7 +127,18 @@ class Dataset(BaseDataset):
         self.smaps, mask = self.get_smaps(
             full_kspace, full_image, crop_size=target.shape
         )
+        # rescaling of denoised version to rss
+        target_denoised = (
+            target_denoised - torch.mean(target_denoised) + torch.mean(target)
+        )
+        target_denoised = (
+            target_denoised
+            * (torch.max(abs(target)) - torch.min(abs(target)))
+            / (torch.max(abs(target_denoised)) - torch.min(abs(target_denoised)))
+        )
+
         target *= mask
+        target_denoised *= mask
         # Initialize the physics model
         physics_sense = self.get_physics(target.shape, samples_loc, smaps=self.smaps)
         physics = self.get_physics(
@@ -117,14 +146,17 @@ class Dataset(BaseDataset):
         )
         # Get the kspace data
         #
-        noise_std = torch.std(target) * 1e-3
+        noise_std = torch.max(target) * 1e-4
+        print("Noise std: ", noise_std)
         kspace_data = physics.nufft.op(full_image_channels)
 
         kspace_data = kspace_data + torch.randn_like(kspace_data) * noise_std
+
         return dict(
             kspace_data=kspace_data,
             physics=physics_sense,
             target=target.cpu().numpy(),
+            target_denoised=target_denoised.cpu().numpy(),
             #    target=abs(full_image).cpu().numpy(),
             trajectory_name=self.sampling,
         )

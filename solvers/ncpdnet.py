@@ -30,6 +30,7 @@ class Solver(BaseSolver):
         self.kspace_data = tf.convert_to_tensor(kspace_data.cpu().numpy()) * 1e6
         self.traj = tf.convert_to_tensor(physics.nufft.samples) * 2 * np.pi
         self.smaps = tf.convert_to_tensor(physics.nufft.smaps)
+        self.mask = physics.nufft.smaps[0] != 0
         self.shape = physics.nufft.shape
         self.dcomp = tf.convert_to_tensor(physics.nufft.density)
         # Create the NCPDNet model
@@ -81,7 +82,7 @@ class Solver(BaseSolver):
 
     def get_result(self):
         return {
-            "x_estimate": self.x_estimate.numpy().squeeze(),
+            "x_estimate": self.x_estimate.numpy().squeeze() * self.mask,
             "cost": 0,
             "scale_target": 1e6,
         }

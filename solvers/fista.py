@@ -38,7 +38,7 @@ class Solver(BaseSolver):
     def set_objective(self, kspace_data, physics, trajectory_name):
         self.kspace_data = kspace_data
         self.physics = physics
-        wavelet = WaveletDictDenoiser(non_linearity="soft", level=6, list_wv=["sym8"])
+        wavelet = WaveletDictDenoiser(non_linearity="soft", level=4, list_wv=["sym8"])
         self.denoiser = ComplexDenoiser(wavelet, True).to("cuda")
         self.data_fidelity = L2()
 
@@ -46,7 +46,8 @@ class Solver(BaseSolver):
         with torch.no_grad():
             # x_cur = get_custom_init(self.kspace_data, self.physics)
             x_cur = self.physics.A_dagger(self.kspace_data)
-            self.stepsize = self.physics.nufft.get_lipschitz_cst()
+            x_cur = torch.zeros_like(x_cur)
+            self.stepsize = 1 / self.physics.nufft.get_lipschitz_cst()
             self.x_estimate = x_cur.clone()
             z = self.x_estimate.detach().clone()
             self.itr = 0
@@ -61,8 +62,8 @@ class Solver(BaseSolver):
                 z = x_cur + alpha * (x_cur - self.x_estimate)
 
                 self.x_estimate = x_cur.clone()
-                if self.itr > self.max_iter:
-                    break
+                # if self.itr > self.max_iter:
+                #     break
                 self.itr += 1
 
     def get_result(self):

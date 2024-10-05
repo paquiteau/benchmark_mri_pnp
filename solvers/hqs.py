@@ -181,12 +181,14 @@ def load_drunet(path_weights):
 def get_custom_init(y, physics):
 
     est = physics.A_dagger(y)
+    est = torch.zeros_like(est)
     return {"est": (est, est.detach().clone())}
 
 
 def get_custom_init_ppnp(y, physics):
 
     est = physics.A_dagger(y)
+    est = torch.zeros_like(est)
     # return {
     #     "est": (torch.zeros_like(est), torch.zeros_like(est), torch.zeros_like(est))
     # }
