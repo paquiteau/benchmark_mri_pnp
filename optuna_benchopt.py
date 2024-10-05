@@ -20,9 +20,20 @@ import numpy as np
 import pandas as pd
 
 
+from optuna.storages import JournalStorage
+from optuna.storages.journal import JournalFileBackend
+
+
 class OptunaObjective:
     def __init__(
-        self, benchmark, dataset, objective, solver_klass, solver_param, trial_params
+        self,
+        benchmark,
+        dataset,
+        objective,
+        solver_klass,
+        solver_param,
+        trial_params,
+        repeat_trial,
     ):
         self.benchmark = benchmark
         self.dataset = dataset
@@ -30,6 +41,7 @@ class OptunaObjective:
         self.solver_klass = solver_klass
         self.solver_params = solver_param
         self.trial_params = trial_params
+        self.repeat_trial = repeat_trial
 
         self.output = TerminalOutput(1, True)
         self.output.set(verbose=True)
@@ -54,22 +66,24 @@ class OptunaObjective:
             new_params[name] = self._add_suggestion(trial, ttype, name, *args, **kwargs)
 
         # prune incompatible parameters
-        if new_params["s1"] < new_params["s2"]:
-            raise optuna.TrialPruned()
+        # if new_params["s1"] < new_params["s2"]:
+        #     raise optuna.TrialPruned()
         # List all datasets, objective and solvers to run based on the filters
         # provided. Merge the solver_names and forced to run all necessary solvers.
-        all_runs = self.benchmark.get_all_runs(
-            [(self.solver_klass, new_params)],
-            None,
-            self.dataset,
-            self.objective,
-            output=self.output,
+        all_runs = list(
+            self.benchmark.get_all_runs(
+                [(self.solver_klass, new_params)],
+                None,
+                self.dataset,
+                self.objective,
+                output=self.output,
+            )
         )  # should only contains a single solver config (but potentially multiple dataset points)
 
         common_kwargs = dict(
             benchmark=self.benchmark,
-            n_repetitions=1,
-            max_runs=10,
+            n_repetitions=self.repeat_trial,
+            max_runs=30,
             timeout=100,
             pdb=False,
             collect=False,
@@ -78,11 +92,13 @@ class OptunaObjective:
         peak = []
         for kwargs in all_runs:
             results = run_one_solver(**common_kwargs, **kwargs)
-            peak_psnr = results[-1]["objective_psnr"]
-            peak_ssim = results[-1]["objective_ssim"]
+            df = pd.DataFrame(results)
+            group = df.groupby("idx_rep")
+            peak_psnr = (group["objective_psnr"].max()).median()
+            peak_ssim = (group["objective_ssim"].max()).median()
             # Do the pruning here (if the solver gives bad results)
             peak.append((peak_psnr, peak_ssim))
-        peak = np.array(peak)
+            peak = np.array(peak)
         return np.median(peak[:, 0])  # np.max(peak[:, 1])
 
 
@@ -119,7 +135,7 @@ def parse_sweep(sweep):
             # a = logrange(a,b)
             return ("float", name, [low, high], {"log": True})
         case _:  # default, raise error
-            raise ValueError(f"Invalid sweep parameter {s}")
+            raise ValueError(f"Invalid sweep parameter {sweep}")
     return trial_params
 
 
@@ -202,10 +218,23 @@ def main(
     # run_one_benchmark
     # get the objective and return it.
     optuna_objective = OptunaObjective(
-        benchmark, datasets, objective, solver_klass, solver_params, sweep_params
+        benchmark,
+        datasets,
+        objective,
+        solver_klass,
+        solver_params,
+        sweep_params,
+        repeat_trial=10,
     )
+
+    storage = JournalStorage(JournalFileBackend("optuna_journal_storage.log"))
     # Initialize the Optuna study
-    study = optuna.create_study(directions=["maximize"])
+    study = optuna.create_study(
+        directions=["maximize"],
+        study_name="HQS",
+        storage=storage,
+        load_if_exists=True,
+    )
     study.optimize(optuna_objective, n_trials=optuna_trials)
 
     print("\n Number of finished trials: ", len(study.trials))

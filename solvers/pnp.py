@@ -73,6 +73,7 @@ class Solver(BaseSolver):
         if "ppnp" in self.iteration:
             _, precond = self.iteration.split("-")
             df = L2()
+            kwargs_optim["custom_init"] = get_custom_init_ppnp
             iterator = PreconditionedPnP(
                 preconditioner=precond,
                 prior=prior,
@@ -175,6 +176,9 @@ def get_custom_init(y, physics):
 def get_custom_init_ppnp(y, physics):
 
     est = physics.A_dagger(y)
+    # return {
+    #     "est": (torch.zeros_like(est), torch.zeros_like(est), torch.zeros_like(est))
+    # }
     return {"est": (est, est.detach().clone(), torch.zeros_like(est))}
 
 
@@ -203,37 +207,36 @@ class PreconditionedPnP(OptimIterator):
                 "The preconditioned PnP algorithm should start with a step on f."
             )
 
-        self.preconditionner = Precond(preconditioner)
+        self.preconditioner = Precond(preconditioner)
 
     def forward(self, X, cur_data_fidelity, cur_prior, cur_params, y, physics):
-        x_prev, grad_f_prev, precond_prev = X["est"]
+        x_prev, x_prev_prev, grad_f_prev = X["est"]
         k = 0 if "it" not in X else X["it"]
 
         # TODO add the preconditioner step
-        grad_f = self.f_step(
-            z_prev, cur_data_fidelity, cur_params, y, physics, self.preconditioner
-        )
+        grad_f = cur_data_fidelity.grad(x_prev, y, physics)
 
         grad_f_precond = self.preconditioner.update_grad(
-            cur_params, physics, grad_f, grad_f_prev, x, x_prev
+            cur_params, physics, grad_f, grad_f_prev, x_prev, x_prev_prev
         )
-        z = x - cur_params["stepsize"] * grad_f_precond
-
+        z = x_prev - cur_params["stepsize"] * grad_f_precond
         x = self.g_step(z, cur_prior, cur_params)
-        z = x + alpha * (x - x_prev)
         F = (
             self.F_fn(x, cur_data_fidelity, cur_prior, cur_params, y, physics)
             if self.has_cost
             else None
         )
 
-        return {"est": (x, grad_f, precond), "cost": F, "it": k + 1}
+        return {"est": (x, x_prev, grad_f), "cost": F, "it": k + 1}
 
 
 class Precond:
     def __init__(self, name, theta1=0.2, theta2=2, delta=1 / 1.633):
         self.it = 0
         self.name = name
+        self.theta1 = theta1
+        self.theta2 = theta2
+        self.delta = delta
 
     def get_alpha(self, s, m):
         alphas = np.linspace(0, 1, 1000)
@@ -241,7 +244,12 @@ class Precond:
 
     def update_grad(self, cur_params, physics, grad, *args, **kwargs):
         if self.name == "static":
-            grad = self._update_grad_static(physics, grad)
+            grad = self._update_grad_static(cur_params, physics, grad, *args, **kwargs)
+        elif self.name == "cheby":
+            grad = self._update_grad_cheby(cur_params, physics, grad, *args, **kwargs)
+        elif self.name == "dynamic":
+            grad = self._update_grad_dynamic(cur_params, physics, grad, *args, **kwargs)
+        return grad
 
     def _update_grad_static(self, cur_params, physics, grad_f, *args, **kwargs):
         """update the gradient with the static preconditioner"""
@@ -254,7 +262,7 @@ class Precond:
 
         return grad_f_preconditioned
 
-    def _update_grad_cheby(self, cur_params, physics, grad_f):
+    def _update_grad_cheby(self, cur_params, physics, grad_f, *args, **kwargs):
         """update the gradient with the static cheby preconditioner"""
 
         alpha = cur_params["stepsize"]
@@ -273,14 +281,14 @@ class Precond:
         sf = s.squeeze(0).squeeze(0).reshape(-1)
         mf = m.squeeze(0).squeeze(0).reshape(-1)
 
-        ss = sf.dot(sf)
-        sm = sf.dot(mf)
-        mm = mf.dot(mf)
+        ss = sf.dot(sf.conj()).real
+        sm = sf.dot(mf.conj()).real
+        mm = mf.dot(mf.conj()).real
 
         for a in np.linspace(0, 1, 1000):
             sv = a * ss + (1 - a) * sm
             vv = (a**2) * ss + ((1 - a) ** 2) * mm + (2 * a * (1 - a)) * sm
-            if sv / ss >= self.theta1 and v.dot(v) / sv <= self.theta2:
+            if sv / ss >= self.theta1 and vv / sv <= self.theta2:
                 break
         v = a * s + (1 - a) * m
 

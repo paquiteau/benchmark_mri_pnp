@@ -4,6 +4,7 @@ import mrinufft
 
 NufftOperator = mrinufft.get_operator("gpunufft")
 
+
 class Nufft(LinearPhysics):
     """
     We can implement our own custom autograd Functions by subclassing
@@ -25,15 +26,21 @@ class Nufft(LinearPhysics):
 
         self.real = real  # Whether to project the data on real images
         if density is not None:
-            if density == 'voronoi':
+            if density == "voronoi":
                 density = voronoi(samples_loc.reshape(-1, 2))
         if Smaps is not None:
             n_coils = len(Smaps)
-        self.nufft = NufftOperator(samples_loc.reshape(-1, 2), shape=img_size, density=density, n_coils=n_coils, squeeze_dims=False, smaps = Smaps)
+        self.nufft = NufftOperator(
+            samples_loc.reshape(-1, 2),
+            shape=img_size,
+            density=density,
+            n_coils=n_coils,
+            squeeze_dims=False,
+            smaps=Smaps,
+        )
 
     def A(self, x):
         return self.nufft.op(x)
 
     def A_adjoint(self, kspace):
         return self.nufft.adj_op(kspace)
-

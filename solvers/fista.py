@@ -28,7 +28,7 @@ class Solver(BaseSolver):
     sampling_strategy = "callback"
     requirements = ["deepinv", "mrinufft[gpunufft]"]
     parameters = {"sigma": [1e-6]}
-    max_iter = 50
+    max_iter = 20
     a = 3  # From Chambolle's FISTA
     stopping_criterion = SufficientProgressCriterion(patience=30)
 
@@ -61,6 +61,8 @@ class Solver(BaseSolver):
                 z = x_cur + alpha * (x_cur - self.x_estimate)
 
                 self.x_estimate = x_cur.clone()
+                if self.itr > self.max_iter:
+                    break
                 self.itr += 1
 
     def get_result(self):

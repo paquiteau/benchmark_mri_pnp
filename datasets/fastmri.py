@@ -67,7 +67,7 @@ class Dataset(BaseDataset):
             root=FASTMRI_PATH,
             challenge="multicoil",
             test=False,
-            load_metadata_from_cache=False,
+            load_metadata_from_cache=True,
             save_metadata_to_cache=True,
             sample_filter=lambda x: True,
             sample_rate=1.0,
@@ -106,19 +106,26 @@ class Dataset(BaseDataset):
             )
         if self.sampling == "radial":
             samples_loc = initialize_2D_radial(int(320 / self.AF), 320, in_out=True)
-        self.smaps = self.get_smaps(full_kspace, full_image, crop_size=target.shape)
+        self.smaps, mask = self.get_smaps(
+            full_kspace, full_image, crop_size=target.shape
+        )
+        target *= mask
         # Initialize the physics model
         physics_sense = self.get_physics(target.shape, samples_loc, smaps=self.smaps)
         physics = self.get_physics(
             target.shape, samples_loc, n_coils=full_kspace.shape[0]
         )
         # Get the kspace data
+        #
+        noise_std = torch.std(target) * 1e-3
         kspace_data = physics.nufft.op(full_image_channels)
-        # TODO Add NOISE to the kspace data
+
+        kspace_data = kspace_data + torch.randn_like(kspace_data) * noise_std
         return dict(
             kspace_data=kspace_data,
             physics=physics_sense,
             target=target.cpu().numpy(),
+            #    target=abs(full_image).cpu().numpy(),
             trajectory_name=self.sampling,
         )
 
@@ -137,7 +144,7 @@ class Dataset(BaseDataset):
         SOS = np.sum((np.abs(images_low.numpy()) ** 2), axis=0)
         Smaps_low = images_low / np.sqrt(SOS)
         Smaps_low *= image_mask
-        return Smaps_low.detach().cpu().numpy()
+        return Smaps_low.detach().cpu().numpy(), image_mask
 
     @staticmethod
     def get_physics(image_shape, samples_loc, n_coils=1, smaps=None):
