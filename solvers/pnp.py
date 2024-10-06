@@ -31,13 +31,13 @@ class Solver(BaseSolver):
     sampling_strategy = "callback"
     requirements = ["deepinv", "mrinufft[gpunufft]"]
     parameters = {
-        "iteration": ["PGD", "FISTA", "ppnp-static", "ppnp-cheby", "ppnp-dynamic"],
+        "iteration": ["PGD", "FISTA", "ppnp-static", "ppnp-cheby"],
         "prior": ["drunet", "drunet-denoised"],
+        "max_iter": [50],
     }
-    max_iter = 20
-    stopping_criterion = SufficientProgressCriterion(patience=30)
+    stopping_criterion = SufficientProgressCriterion(patience=100)
 
-    def skip(self, kspace_data, physics, trajectory_name):
+    def skip(self, *args, **kwargs):
         if self.prior == "drunet" and not os.path.exists(DRUNET_PATH):
             return True, "DRUNet weights not found"
         if self.prior == "drunet-denoised" and not os.path.exists(DRUNET_DENOISE_PATH):
@@ -52,6 +52,7 @@ class Solver(BaseSolver):
         kspace_data,
         physics,
         trajectory_name,
+        x_init,
     ):
         self.kspace_data = kspace_data
         self.physics = physics
@@ -68,13 +69,17 @@ class Solver(BaseSolver):
         }
         kwargs_optim["early_stop"] = False
         kwargs_optim["verbose"] = False
-        kwargs_optim["custom_init"] = get_custom_init
+        kwargs_optim["custom_init"] = lambda y, p: {
+            "est": (x_init, x_init.detach().clone())
+        }
         kwargs_optim["max_iter"] = self.max_iter
 
         if "ppnp" in self.iteration:
             _, precond = self.iteration.split("-")
             df = L2()
-            kwargs_optim["custom_init"] = get_custom_init_ppnp
+            kwargs_optim["custom_init"] = lambda y, p: {
+                "est": (x_init, x_init.detach().clone(), torch.zeros_like(x_init))
+            }
             iterator = PreconditionedPnP(
                 preconditioner=precond,
                 prior=prior,
@@ -168,21 +173,21 @@ def load_drunet(path_weights):
     return model
 
 
-def get_custom_init(y, physics):
+# def get_custom_init(y, physics):
 
-    est = physics.A_dagger(y)
-    est = torch.zeros_like(est)
-    return {"est": (est, est.detach().clone())}
+#     est = physics.A_dagger(y)
+#     # est = torch.zeros_like(est)
+#     return {"est": (est, est.detach().clone())}
 
 
-def get_custom_init_ppnp(y, physics):
+# def get_custom_init_ppnp(y, physics):
 
-    est = physics.A_dagger(y)
-    est = torch.zeros_like(est)
-    # return {
-    #     "est": (torch.zeros_like(est), torch.zeros_like(est), torch.zeros_like(est))
-    # }
-    return {"est": (est, est.detach().clone(), torch.zeros_like(est))}
+#     est = physics.A_dagger(y)
+#     # est = torch.zeros_like(est)
+#     # return {
+#     #     "est": (torch.zeros_like(est), torch.zeros_like(est), torch.zeros_like(est))
+#     # }
+#     return {"est": (est, est.detach().clone(), torch.zeros_like(est))}
 
 
 def get_DPIR_params(s1=0.5, s2=0.1, lamb=2, n_iter=10):

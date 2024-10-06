@@ -28,25 +28,26 @@ class Solver(BaseSolver):
     sampling_strategy = "callback"
     requirements = ["deepinv", "mrinufft[gpunufft]"]
     parameters = {"sigma": [1e-6]}
-    max_iter = 20
+    max_iter = 100
     a = 3  # From Chambolle's FISTA
     stopping_criterion = SufficientProgressCriterion(patience=30)
 
     def get_next(self, stop_val):
         return stop_val + 1
 
-    def set_objective(self, kspace_data, physics, trajectory_name):
+    def set_objective(self, kspace_data, physics, trajectory_name, x_init):
         self.kspace_data = kspace_data
         self.physics = physics
         wavelet = WaveletDictDenoiser(non_linearity="soft", level=4, list_wv=["sym8"])
         self.denoiser = ComplexDenoiser(wavelet, True).to("cuda")
         self.data_fidelity = L2()
+        self.x_init = x_init
 
     def run(self, callback):
         with torch.no_grad():
             # x_cur = get_custom_init(self.kspace_data, self.physics)
-            x_cur = self.physics.A_dagger(self.kspace_data)
-            x_cur = torch.zeros_like(x_cur)
+            x_cur = self.x_init.detach().clone()
+            # x_cur = torch.zeros_like(x_cur)
             self.stepsize = 1 / self.physics.nufft.get_lipschitz_cst()
             self.x_estimate = x_cur.clone()
             z = self.x_estimate.detach().clone()

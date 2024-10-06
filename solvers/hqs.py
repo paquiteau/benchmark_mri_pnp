@@ -14,7 +14,7 @@ with safe_import_context() as import_ctx:
     from deepinv.optim.optim_iterators.hqs import fStepHQS, gStepHQS
     from deepinv.optim.optim_iterators import OptimIterator, fStep, gStep
 
-    from deepinv.optim.utils import gradient_descent
+    from deepinv.optim.utils import gradient_descent, conjugate_gradient
 
     from benchmark_utils.utils import stand
     from benchmark_utils.drunet import DRUNet
@@ -37,15 +37,15 @@ class Solver(BaseSolver):
     parameters = {
         "iteration": ["classic", "ppnp-cheby", "ppnp-static"],
         "prior": ["drunet", "drunet-denoised"],
-        "sigma": [0.0007],
-        "xi": [0.84],
-        "lamb": [6.5],
+        "sigma": [0.01],
+        "xi": [0.95],
+        "lamb": [2],
         "max_iter": [20],
-        "stepsize": [1.5],
+        "stepsize": [2],
     }
-    stopping_criterion = SufficientProgressCriterion(patience=30)
+    stopping_criterion = SufficientProgressCriterion(patience=100)
 
-    def skip(self, kspace_data, physics, trajectory_name):
+    def skip(self, *args, **kwargs):
         if self.prior == "drunet" and not os.path.exists(DRUNET_PATH):
             return True, "DRUNet weights not found"
         if self.prior == "drunet-denoised" and not os.path.exists(DRUNET_DENOISE_PATH):
@@ -60,6 +60,7 @@ class Solver(BaseSolver):
         kspace_data,
         physics,
         trajectory_name,
+        x_init,
     ):
 
         # # HACK add the noise here (avoid recomputing smaps and operator for each trial)
@@ -82,16 +83,20 @@ class Solver(BaseSolver):
             stepsize=self.stepsize / physics.nufft.get_lipschitz_cst(),
             n_iter=self.max_iter,
         )
+        kwargs_optim["custom_init"] = lambda y, p: {
+            "est": (x_init, x_init.detach().clone())
+        }
 
         if "ppnp" in self.iteration:
             _, precond = self.iteration.split("-")
-            kwargs_optim["custom_init"] = get_custom_init_ppnp
+            # kwargs_optim["custom_init"] = lambda y, p: {
+            #     "est"(x_init, x_init.detach().clone(), torch.zeros_like(x_init))
+            # }
             iterator = PreconditionedHQSIteration(
                 precond=Precond(precond),
             )
         else:
             iterator = "HQS"
-            kwargs_optim["custom_init"] = get_custom_init
         self.algo = optim_builder(
             iteration=iterator,
             prior=prior,
@@ -172,21 +177,21 @@ def load_drunet(path_weights):
     return model
 
 
-def get_custom_init(y, physics):
+# def get_custom_init(y, physics):
 
-    est = physics.A_dagger(y)
-    est = torch.zeros_like(est)
-    return {"est": (est, est.detach().clone())}
+#     est = physics.A_dagger(y)
+#     # est = torch.zeros_like(est)
+#     return {"est": (est, est.detach().clone())}
 
 
-def get_custom_init_ppnp(y, physics):
+# def get_custom_init_ppnp(y, physics):
 
-    est = physics.A_dagger(y)
-    est = torch.zeros_like(est)
-    # return {
-    #     "est": (torch.zeros_like(est), torch.zeros_like(est), torch.zeros_like(est))
-    # }
-    return {"est": (est, est.detach().clone(), torch.zeros_like(est))}
+#     est = physics.A_dagger(y)
+#     # est = torch.zeros_like(est)
+#     # return {
+#     #     "est": (torch.zeros_like(est), torch.zeros_like(est), torch.zeros_like(est))
+#     # }
+#     return {"est": (est, est.detach().clone(), torch.zeros_like(est))}
 
 
 def get_DPIR_params(sigma=1, xi=1, lamb=2, stepsize=1, n_iter=10):
@@ -295,29 +300,40 @@ class fStepHQSPrecond(fStep):
         )
 
     def prox_l2_metric(
-        self,
-        x,
-        y,
-        physics,
-        gamma,
-        precond,
-        stepsize_inter=1.0,
-        max_iter_inter=50,
-        tol_inter=1e-3,
+        self, z, y, physics, gamma, precond=None, max_iter=50, tol=1e-3, **kwargs
     ):
         r"""
-        Computes proximal operator of :math:`f(x)=\frac{\gamma}{2}\|Ax-y\|^2`
-        in an efficient manner leveraging the singular vector decomposition.
+        Computes proximal operator of :math:`f(x) = \frac{1}{2}\|Ax-y\|^2`, i.e.,
 
-        :param torch.Tensor, float z: signal tensor
+        .. math::
+
+            \underset{x}{\arg\min} \; \frac{\gamma}{2}\|Ax-y\|^2 + \frac{1}{2}\|x-z\|^2
+
         :param torch.Tensor y: measurements tensor
-        :param float gamma: hyperparameter :math:`\gamma` of the proximal operator
+        :param torch.Tensor z: signal tensor
+        :param float gamma: hyperparameter of the proximal operator
         :return: (torch.Tensor) estimated signal tensor
 
         """
-        grad = lambda z: gamma * self.metric.grad(z, y, physics) + precond.update_grad(
-            {"stepsize": gamma}, physics, z - x
-        )
-        return gradient_descent(
-            grad, x, step_size=stepsize_inter, max_iter=max_iter_inter, tol=tol_inter
-        )
+
+        lipschitz_cst = physics.nufft.get_lipschitz_cst()
+        if precond is None:
+            b = physics.A_adjoint(y, **kwargs) + 1 / gamma * z
+
+            def H(x):
+                return physics.A_adjoint(physics.A(x, **kwargs)) + 1 / gamma * x
+
+        else:
+            b = physics.A_adjoint(y, **kwargs) + 1 / gamma * precond.update_grad(
+                {"stepsize": 1 / lipschitz_cst}, physics, z
+            )
+
+            def H(x):
+                return physics.A_adjoint(
+                    physics.A(x, **kwargs)
+                ) + 1 / gamma * precond.update_grad(
+                    {"stepsize": 1.0 / lipschitz_cst}, physics, x
+                )
+
+        x = conjugate_gradient(H, b, max_iter, tol)
+        return x

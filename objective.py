@@ -17,7 +17,9 @@ class Objective(BaseObjective):
     #     'fit_intercept': [False],
     # }
 
-    def set_data(self, kspace_data, physics, target, target_denoised, trajectory_name):
+    def set_data(
+        self, kspace_data, physics, target, target_denoised, trajectory_name, x_init
+    ):
         # The keyword arguments of this function are the keys of the `data`
         # dict in the `get_data` function of the dataset.
         # They are customizable.
@@ -26,6 +28,7 @@ class Objective(BaseObjective):
         self.target = target
         self.target_denoised = target_denoised
         self.trajectory_name = trajectory_name
+        self.x_init = x_init
 
     def get_objective(self):
         # The output of this function are the keyword arguments
@@ -36,6 +39,7 @@ class Objective(BaseObjective):
             kspace_data=self.kspace_data,
             physics=self.physics,
             trajectory_name=self.trajectory_name,
+            x_init=self.x_init,
         )
 
     def evaluate_result(self, x_estimate, cost, scale_target=1.0):

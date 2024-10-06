@@ -26,9 +26,11 @@ import glob
 BENCHMARK = sorted(glob.glob("../outputs/*.parquet"))[-1]
 print(BENCHMARK)
 
-
 # %%
-#BENCHMARK = "../outputs/benchopt_run_2024-09-09_11h22m24.parquet"
+BENCHMARK = "../outputs/benchopt_run_2024-09-09_11h22m24.parquet"
+
+BENCHMARK = "../outputs/benchopt_run_2024-10-06_18h12m12.parquet"
+
 
 # %%
 def fmt_dict(**kwargs):

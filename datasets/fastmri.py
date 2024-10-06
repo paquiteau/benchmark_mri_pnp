@@ -26,7 +26,7 @@ with safe_import_context() as import_ctx:
         initialize_2D_radial,
     )
 
-MAX_SAMPLES = 1
+MAX_SAMPLES = 6
 
 
 FASTMRI_PATH = os.environ.get(
@@ -59,15 +59,21 @@ class Dataset(BaseDataset):
         "contrast": ["FLAIR", "T1", "T2"],
         "sampling": ["spiral", "radial"],
         "AF": [4, 8, 16],
+        "seed": [1, 2, 3, 4, 5],
+        "init": ["zeros"],
     }
 
-    parameter_template = "{contrast}-{sampling}-{AF}"  # id is ommited to get average.
+    parameter_template = (
+        "{contrast}-{sampling}-{AF}-{init}"  # id and seed are ommited to get average.
+    )
 
-    def __init__(self, id, contrast, sampling, AF):
+    def __init__(self, id, contrast, sampling, AF, seed, init):
         self.id = id
         self.contrast = contrast
         self.sampling = sampling
         self.AF = AF
+        self.seed = seed
+        self.init = init
 
         self.dataloader = FastMRISliceDataset(
             root=FASTMRI_PATH,
@@ -94,6 +100,7 @@ class Dataset(BaseDataset):
             return True, "no such id"
 
     def get_data(self):
+        torch.manual_seed(self.seed)
         target, full_kspace = self.dataloader[self._fastmri_id]
 
         fname, dataslice = self.dataloader.sample_identifiers[self._fastmri_id]
@@ -152,6 +159,11 @@ class Dataset(BaseDataset):
 
         kspace_data = kspace_data + torch.randn_like(kspace_data) * noise_std
 
+        x_dagger = physics_sense.A_dagger(kspace_data)
+        if self.init == "dagger":
+            x_init = x_dagger
+        elif self.init == "zeros":
+            x_init = torch.zeros_like(x_dagger)
         return dict(
             kspace_data=kspace_data,
             physics=physics_sense,
@@ -159,6 +171,7 @@ class Dataset(BaseDataset):
             target_denoised=target_denoised.cpu().numpy(),
             #    target=abs(full_image).cpu().numpy(),
             trajectory_name=self.sampling,
+            x_init=x_init,
         )
 
     @staticmethod
