@@ -54,26 +54,29 @@ class Precond:
         sf = s.squeeze(0).squeeze(0).reshape(-1)
         mf = m.squeeze(0).squeeze(0).reshape(-1)
 
-        ss = sf.dot(sf.conj()).real
-        sm = sf.dot(mf.conj()).real
-        mm = mf.dot(mf.conj()).real
+        ss = torch.vdot(sf, sf).real
+        sm = torch.vdot(sf, mf).real
+        mm = torch.vdot(mf, mf).real
+
+        if ss == 0 or mm == 0:
+            return grad_f
 
         for a in np.linspace(0, 1, 1000):
             sv = a * ss + (1 - a) * sm
             vv = (a**2) * ss + ((1 - a) ** 2) * mm + (2 * a * (1 - a)) * sm
             if sv / ss >= self.theta1 and vv / sv <= self.theta2:
                 break
-        v = a * s + (1 - a) * m
-
+        vf = a * sf + (1 - a) * mf
         tau = ss / sv - torch.sqrt((ss / sv) ** 2 - ss / vv)
-
         tmp = sv - tau * vv
         grad_f_preconditioned = tau * grad_f
 
-        if tmp >= self.delta * torch.sqrt(tmp * vv):
+        if tmp >= (
+            self.delta * torch.sqrt(ss - 2 * tau * sv + tau**2 * vv) * torch.sqrt(vv)
+        ):
             u = sf - tau * vf
             u = u.dot(grad_f.squeeze(0).squeeze(0).reshape(-1)) * u
             u = u.reshape(grad_f.shape)
-
             grad_f_preconditioned += u / tmp
+
         return grad_f_preconditioned
