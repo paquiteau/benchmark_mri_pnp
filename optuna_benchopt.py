@@ -83,8 +83,8 @@ class OptunaObjective:
         common_kwargs = dict(
             benchmark=self.benchmark,
             n_repetitions=self.repeat_trial,
-            max_runs=30,
-            timeout=100,
+            max_runs=300,
+            timeout=400,
             pdb=False,
             collect=False,
         )
@@ -98,7 +98,8 @@ class OptunaObjective:
             peak_ssim = (group["objective_ssim"].max()).median()
             # Do the pruning here (if the solver gives bad results)
             peak.append((peak_psnr, peak_ssim))
-            peak = np.array(peak)
+        peak = np.array(peak)
+        print(peak)
         return np.median(peak[:, 0])  # np.max(peak[:, 1])
 
 
@@ -224,7 +225,7 @@ def main(
         solver_klass,
         solver_params,
         sweep_params,
-        repeat_trial=10,
+        repeat_trial=1,
     )
 
     storage = JournalStorage(JournalFileBackend("optuna_journal_storage.log"))
