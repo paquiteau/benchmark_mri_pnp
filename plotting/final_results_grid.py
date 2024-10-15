@@ -26,11 +26,11 @@ import glob
 BENCHMARK = sorted(glob.glob("../outputs/*.parquet"))[-1]
 print(BENCHMARK)
 
+
 # %%
-BENCHMARK = "../outputs/benchopt_run_2024-09-09_11h22m24.parquet"
+# BENCHMARK = "../outputs/benchopt_run_2024-09-09_11h22m24.parquet"
 
-BENCHMARK = "../outputs/benchopt_run_2024-10-06_18h12m12.parquet"
-
+# BENCHMARK = "../outputs/benchopt_run_2024-10-14_15h38m44.parquet"
 
 # %%
 def fmt_dict(**kwargs):
@@ -78,15 +78,15 @@ def plot_one_dataset(df, max_cols, figsize=(10,10)):
     n_img = len(df["solver_name"].unique())
     ncols = min(n_img, max_cols) + 1
     nrows = int(np.ceil(n_img / max_cols))
-    grid = ImageGrid(fig, 111, nrows_ncols=(nrows*3,ncols), axes_pad=0.1,
+    grid = ImageGrid(fig, 111, nrows_ncols=(nrows*2,ncols), axes_pad=0.1,
                      cbar_location="right",
                     cbar_mode="edge",
                     cbar_size="7%",
                     cbar_pad="2%",
                     )
     axes_cols =  [c for col in grid.axes_column for c in col]
-    paired_axes = list(zip(axes_cols[::3], axes_cols[1::3], axes_cols[2::3]))
-    for (ax, eax, eax2 ), solver_name in zip(paired_axes[1:], df["solver_name"].unique()):
+    paired_axes = list(zip(axes_cols[::2], axes_cols[1::2]))
+    for (ax, eax), solver_name in zip(paired_axes[1:], df["solver_name"].unique()):
         
         sub_df = df[df["solver_name"] == solver_name]
         args = parse_name(solver_name)
@@ -98,8 +98,6 @@ def plot_one_dataset(df, max_cols, figsize=(10,10)):
         vmax = abs(target).max()
         im_range = ax.imshow(img, vmin=vmin, vmax=vmax, cmap="gray", origin='lower')
         eim_range = eax.imshow(abs(abs(img) - abs(target)),vmin=0, vmax=vmax/20, cmap="inferno", origin='lower')
-        eim_range2 = eax2.imshow(abs(abs(img) - abs(target_preprocessed)),vmin=0, vmax=vmax/10, cmap="inferno", origin='lower')
-#       
         psnr_max = list(sub_df["objective_psnr"])[-1]
         ssim_max = list(sub_df["objective_ssim"])[-1]
         ax.set_title(f"PSNR={psnr_max:.3f}db, \nSSIM={ssim_max:.3f}")
@@ -108,13 +106,11 @@ def plot_one_dataset(df, max_cols, figsize=(10,10)):
         ax.text(2,img.shape[1]-2,"\n".join([f"{k}={v}" for k,v in filter_name.items()]), ha="left", va="top", color="red")
     grid.cbar_axes[0].colorbar(im_range)
     grid.cbar_axes[1].colorbar(eim_range)
-    grid.cbar_axes[2].colorbar(eim_range2)
 
     paired_axes[0][0].imshow(abs(target), vmin=vmin, vmax=vmax,origin="lower", cmap="gray")
     paired_axes[0][0].set_title("Ground Truth")
     paired_axes[0][0].axis("off")
     paired_axes[0][1].axis("off")
-    paired_axes[0][2].axis("off")
 
     return fixed_params, fig
     
@@ -125,26 +121,28 @@ def plot_grid_results(df, max_cols=10, figsize=(10,10)):
     # FIXME: https://github.com/benchopt/benchopt/issues/734
     df = df.drop("version-numpy", axis=1)
     
-    fixed_columns = df.columns[df.apply(pd.Series.nunique) == 1]
-    fixed_params = {c: df.loc[0, c] for c in fixed_columns}
+    # fixed_columns = df.columns[df.apply(pd.Series.nunique) == 1]
+    # fixed_params = {c: df.loc[0, c] for c in fixed_columns}
     
-    df = df.loc[:,df.apply(pd.Series.nunique) != 1]
-    var_params_names = df.columns[df.apply(pd.Series.nunique) != 1]
+    # df = df.loc[:,df.apply(pd.Series.nunique) != 1]
+    # var_params_names = df.columns[df.apply(pd.Series.nunique) != 1]
 
     if "data_name" in df.columns:
         for data_name in df["data_name"].unique():
             df_data = df[df["data_name"] == data_name]
-            plot_one_dataset(df_data, max_cols=max_cols, figsize=figsize)
+            fixed_params, fig = plot_one_dataset(df_data, max_cols=max_cols, figsize=figsize)
     else:    
-        plot_one_dataset(df, max_cols=max_cols, figsize=figsize)
+        fixed_params, fig =  plot_one_dataset(df, max_cols=max_cols, figsize=figsize)
+    return fig
 
 
 # %%
 df = pd.read_parquet(BENCHMARK)
 print(df.columns)
-for name, sub_df in df.groupby("p_solver_prior"):
+for name, sub_df in df.groupby("p_solver_prior", dropna=False):
     sub_df =sub_df.reset_index(drop=True)
-    plot_grid_results(sub_df, max_cols=10, figsize=(20,20))
+    fig = plot_grid_results(sub_df, max_cols=10, figsize=(20,20))
+    fig.savefig("test.pdf", bbox_inches="tight", pad_inches=0,dpi=300)
 
 # %%
 df = pd.read_parquet(BENCHMARK)
