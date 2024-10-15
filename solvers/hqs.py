@@ -20,9 +20,9 @@ with safe_import_context() as import_ctx:
     from benchmark_utils.drunet import DRUNet
 
 proj_dir = Path(__file__).parent.parent
-DRUNET_PATH = os.environ.get("DRUNET_PATH", proj_dir / "drunet.tar")
+DRUNET_PATH = os.environ.get("DRUNET_PATH", proj_dir / "drunet_noisy.tar")
 DRUNET_DENOISE_PATH = os.environ.get(
-    "DRUNET_DENOISE_PATH", proj_dir / "drunet_denoised.tar"
+    "DRUNET_DENOISE_PATH", proj_dir / "drunet_clean.tar"
 )
 
 
@@ -140,7 +140,7 @@ class Solver(BaseSolver):
     def _get_estimate(self, x_cur):
         x_est = x_cur["est"]
         if isinstance(x_est, tuple):
-            x_est = x_est[1]
+            x_est = x_est[0]  # WAS 1 before 14/10
         return x_est, x_cur["cost"]
 
 
@@ -325,14 +325,16 @@ class fStepHQSPrecond(fStep):
 
         else:
             b = physics.A_adjoint(y, **kwargs) + 1 / gamma * precond.update_grad(
-                {"stepsize": 1 / lipschitz_cst}, physics, z
+                {"stepsize": 1.0 / lipschitz_cst}, physics, z
             )
 
             def H(x):
                 return physics.A_adjoint(
                     physics.A(x, **kwargs)
                 ) + 1 / gamma * precond.update_grad(
-                    {"stepsize": 1.0 / lipschitz_cst}, physics, x
+                    {"stepsize": 1.0 / lipschitz_cst},
+                    physics,
+                    x,
                 )
 
         x = conjugate_gradient(H, b, max_iter, tol)

@@ -25,7 +25,7 @@ class Solver(BaseSolver):
         "git+ssh://git@github.com/zaccharieramzi/fastmri-reproducible-benchmark"
     ]
 
-    def set_objective(self, kspace_data, physics, trajectory_name):
+    def set_objective(self, kspace_data, physics, trajectory_name, x_init=None):
         # Convert the kspace data from torch to tf
         self.kspace_data = tf.convert_to_tensor(kspace_data.cpu().numpy()) * 1e6
         self.traj = tf.convert_to_tensor(physics.nufft.samples) * 2 * np.pi

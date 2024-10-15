@@ -16,9 +16,9 @@ with safe_import_context() as import_ctx:
     from benchmark_utils.drunet import DRUNet
 
 proj_dir = Path(__file__).parent.parent
-DRUNET_PATH = os.environ.get("DRUNET_PATH", proj_dir / "drunet.tar")
+DRUNET_PATH = os.environ.get("DRUNET_PATH", proj_dir / "drunet_noisy.tar")
 DRUNET_DENOISE_PATH = os.environ.get(
-    "DRUNET_DENOISE_PATH", proj_dir / "drunet_denoised.tar"
+    "DRUNET_DENOISE_PATH", proj_dir / "drunet_clean.tar"
 )
 
 
@@ -31,7 +31,7 @@ class Solver(BaseSolver):
     sampling_strategy = "callback"
     requirements = ["deepinv", "mrinufft[gpunufft]"]
     parameters = {
-        "iteration": ["PGD", "FISTA", "ppnp-static", "ppnp-cheby"],
+        "iteration": ["PGD", "FISTA", "ppnp-static", "ppnp-cheby", "ppnp-dynamic"],
         "prior": ["drunet", "drunet-denoised"],
         "max_iter": [50],
     }
