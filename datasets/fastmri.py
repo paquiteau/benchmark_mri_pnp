@@ -147,9 +147,16 @@ class Dataset(BaseDataset):
         target *= mask
         target_denoised *= mask
         # Initialize the physics model
-        physics_sense = self.get_physics(target.shape, samples_loc, smaps=self.smaps)
+        physics_sense = self.get_physics(
+            target.shape, samples_loc, smaps=self.smaps, density=None
+        )
+
+
         physics = self.get_physics(
-            target.shape, samples_loc, n_coils=full_kspace.shape[0]
+            target.shape,
+            samples_loc,
+            n_coils=full_kspace.shape[0],
+            density=None,  # no need for density in forward model.
         )
         # Get the kspace data
         #
@@ -164,6 +171,8 @@ class Dataset(BaseDataset):
             x_init = x_dagger
         elif self.init == "zeros":
             x_init = torch.zeros_like(x_dagger)
+        elif self.init == "adjoint":
+            x_init = physics_sense.A_adjoint(kspace_data)
         return dict(
             kspace_data=kspace_data,
             physics=physics_sense,
@@ -192,9 +201,13 @@ class Dataset(BaseDataset):
         return Smaps_low.detach().cpu().numpy(), image_mask
 
     @staticmethod
-    def get_physics(image_shape, samples_loc, n_coils=1, smaps=None):
+    def get_physics(image_shape, samples_loc, n_coils=1, smaps=None, density="pipe"):
         physics = Nufft(
-            image_shape, samples_loc, n_coils=n_coils, Smaps=smaps, density="pipe"
+            image_shape,
+            samples_loc,
+            n_coils=n_coils,
+            Smaps=smaps,
+            density=density,
         )
         return physics
 
