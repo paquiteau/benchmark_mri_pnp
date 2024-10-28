@@ -24,3 +24,7 @@ coverage.xml
 *.tex
 
 **/.ipynb_checkpoints
+
+# Data and model
+data/
+model_weights/
