@@ -48,8 +48,8 @@ def parse_name(name_str):
 
 
 # %%
-BENCHMARK = "../outputs/benchopt_run_2024-10-07_16h21m03.parquet"
-AF = 4
+#BENCHMARK = "../outputs/benchopt_run_2024-10-07_16h21m03.parquet"
+#AF = 4
 
 # %%
 # Define a function to extract parameters
@@ -76,7 +76,7 @@ fig_size = [fig_width,fig_height]
 
 
 # %%
-params = {'backend': 'notebook',
+params = {#'backend': 'notebook',
           'axes.labelsize': 6,
           'font.size': 6,
           'legend.fontsize': 8,
@@ -99,14 +99,18 @@ lastiter_idx = df.groupby(["solver_name", "p_dataset_id", "data_name", "p_datase
 
 # %%
 dfli = df.loc[lastiter_idx]
+dfli["p_solver_prior"].unique()
 
 
 # %%
-dfli = dfli[dfli["p_solver_prior"] != "drunet"]
-dfli = dfli[dfli["p_dataset_seed"] == 5]
+dfli = df.loc[lastiter_idx]
+dfli = dfli[dfli["p_solver_prior"].isin(["drunet-denoised", pd.NA])]
+dfli = dfli[dfli["p_dataset_seed"] == 1]
 dfli
 
 # %%
+
+
 dfli["p_solver_prior"] = dfli["p_solver_prior"].replace({"drunet":"DRUNet", "drunet-denoised":"D-DRUNet", None:"N/A"})
 dfli["solver_name"] = dfli["solver_name"].apply(lambda x: x.split("[")[0])
 df_plot = dfli.copy()
@@ -117,8 +121,117 @@ df_plot["solver_name"] = df_plot["solver_name"].replace({"FISTA-wavelet":"FISTA-
 df_plot["p_precond"] = (df_plot["p_solver_iteration"].replace({"classic":"Id", "PGD":"Id", "ppnp-cheby":"Cheb", "ppnp-static":"F1", None:"FISTA"}))
 
 
-# %%
+df_plot = df_plot[df_plot["p_solver_iteration"].isin(["classic", "ppnp-static", "PGD", pd.NA])]
 df_plot
+
+
+# %%
+from mrinufft.trajectories import initialize_2D_spiral, display_2D_trajectory, displayConfig
+
+spiral4 = initialize_2D_spiral(320//4,320, in_out=True)
+spiral16 = initialize_2D_spiral(320//16,320, in_out=True)
+
+
+# %%
+def display_traj(trajectory, ax, one_shot=True):
+    colors = displayConfig.get_colorlist()
+    Nc, Ns = trajectory.shape[:2]
+    for i in range(Nc):
+        ax.plot(
+            trajectory[i, :, 0],
+            trajectory[i, :, 1],
+            color=colors[i % displayConfig.nb_colors],
+            linewidth=0.5,
+        )
+
+    # Display one shot in particular if requested
+    if one_shot is not False:  # If True or int
+        # Select shot
+        shot_id = Nc // 2
+        if one_shot is not True:  # If int
+            shot_id = one_shot
+
+        # Highlight the shot in black
+        ax.plot(
+            trajectory[shot_id, :, 0],
+            trajectory[shot_id, :, 1],
+            color=displayConfig.one_shot_color,
+            linewidth=0.5,
+        )
+
+
+# %%
+ROI_SIZE = [0.1 ,0.1]
+ROI_ANCHOR = [0.6,0.5]
+def add_inset(ax, img, vmin, vmax, cmap, loc=(0.7,0.7,0.3,0.3)):
+    img_shape = img.shape
+    # INSET 
+    axins = ax.inset_axes(loc)
+    axins.imshow(img, vmin=vmin, vmax=vmax, cmap=cmap)
+    
+    axins.set_xlim(img_shape[0]*(ROI_ANCHOR[0]), img_shape[0]*(ROI_ANCHOR[0]+ROI_SIZE[0])) 
+    axins.set_ylim(img_shape[1]*(ROI_ANCHOR[1]), img_shape[1]*(ROI_ANCHOR[1]+ROI_SIZE[1]))
+    for spine in axins.spines.values():
+        spine.set(color="lime", linewidth=0.5)
+    axins.grid(False)
+    axins.set_xticks([])
+    axins.set_yticks([])
+    ax.indicate_inset((img_shape[0]*ROI_ANCHOR[0], 
+                      img_shape[1]*ROI_ANCHOR[1],
+                      img_shape[0]*ROI_SIZE[0], 
+                      img_shape[1]*ROI_SIZE[1]), edgecolor="lime", alpha=1, linewidth=0.5)
+
+#dfp = df_plot.sort_values(["solver_name", "p_dataset_AF"])
+dfp =df_plot
+fig = plt.figure(figsize=fig_size,dpi=300)
+grid = ImageGrid(fig, 111, nrows_ncols=(2,7), cbar_mode=None, axes_pad=0.01)
+
+[ax.axis("off") for ax in grid]
+
+for (af, dfpp), row_axes in  zip(dfp.groupby("p_dataset_AF"), grid.axes_row):
+    for ax, (_, r) in zip(row_axes[:-1], dfpp.iterrows()):
+        result_file = r["final_results"]
+        img, target, target_preprocessed = np.load(Path(result_file).resolve(), allow_pickle=True)
+        img = abs(img.squeeze())
+        err = abs(img - abs(target))
+        vmin = abs(target).min()
+        vmax = abs(target).max()
+        im_range = ax.imshow(img, vmin=vmin, vmax=vmax, cmap="gray", origin="lower")
+        add_inset(ax, img, vmin, vmax, cmap="gray")
+        add_inset(ax, err, 0, vmax/10, cmap="inferno", loc=(0.7,0.,0.3,0.3) )
+        psnr_max = r["objective_psnr"]
+        ssim_max = r["objective_ssim"]
+        ax.text(0.02,0.98, f"PSNR={psnr_max:.3f}dB\nSSIM={ssim_max:.3f}", color="white",fontsize=4, ha="left", va="top", transform=ax.transAxes,)
+        label = f"{r['solver_name']}-{r['p_precond']}"
+        label=label.replace("-FISTA","")
+        ax.text(0.5,1.05, label, color="black",fontsize=6, ha="center", va="bottom", transform=ax.transAxes,)
+
+gt_ax = grid.axes_column[-1][0]
+gt_im = gt_ax.imshow(abs(target), vmin=vmin, vmax=vmax, cmap="gray", origin="lower")
+add_inset(gt_ax, abs(target), vmin, vmax, cmap="gray")
+
+gt_ax.text(0.5,1.05,"Ground Truth",ha="center", va="bottom", transform=gt_ax.transAxes)
+
+
+for ax, af in zip(grid.axes_column[0], [4,16]):
+    ax.text(-0.05,0.5, f"AF={af}", rotation=90, va="center", ha="center",transform=ax.transAxes)
+
+traj_ax= grid.axes_column[-1][-1].inset_axes((0.1,0.1,0.8,0.8))
+
+# traj_ax.set_xlim(-0.5,0.5)
+# traj_ax.set_ylim(-0.5,0.5)
+print(traj_ax.axis("on"))
+display_traj(spiral16*380+190, traj_ax)
+traj_ax.set_xticks([0,190,380],[-0.5,0,0.5], fontsize=4)
+traj_ax.yaxis.tick_right()
+traj_ax.set_yticks([0,190,380],[-0.5,0,0.5], fontsize=4)
+traj_ax.tick_params(width=0.2,length=1,pad=0.1)
+traj_ax.set_title("AF=16", pad=3,fontsize=4)
+for spine in traj_ax.spines.values():
+    spine.set(linewidth=0.5)
+traj_ax.grid(linewidth=0.5)
+
+fig.savefig(f"grid_image.pdf",bbox_inches="tight", pad_inches=0)
 
 # %%
 df = df_plot
@@ -141,8 +254,8 @@ for (ax, eax), (_, row) in zip(paired_axes[1:], df.iterrows()):
     img = abs(img.squeeze())
     vmin = abs(target).min()
     vmax = abs(target).max()
-    im_range = ax.imshow(img, vmin=vmin, vmax=vmax, cmap="gray", origin='lower')
-    eim_range = eax.imshow(abs(abs(img) - abs(target)),vmin=0, vmax=vmax/15, cmap="inferno", origin='lower')    
+    im_range = ax.imshow(img, vmin=vmin, vmax=vmax, cmap="gray")
+    eim_range = eax.imshow(abs(abs(img) - abs(target)),vmin=0, vmax=vmax/15, origin="lower", cmap="inferno")    
     psnr_max = row["objective_psnr"]
     ssim_max = row["objective_ssim"]
     ax.text(0.02,0.98, f"PSNR={psnr_max:.3f}dB\nSSIM={ssim_max:.3f}", color="white",fontsize=4, ha="left", va="top", transform=ax.transAxes,)
@@ -152,12 +265,6 @@ for (ax, eax), (_, row) in zip(paired_axes[1:], df.iterrows()):
 
 
 
-# cbar = grid.cbar_axes[0].colorbar(im_range)
-# cbar.formatter.set_powerlimits((0, 0))
-# cbar2 = grid.cbar_axes[1].colorbar(eim_range)
-# cbar2.formatter.set_powerlimits((0, 0))
-# print(cbar.ax.yaxis.get_major_formatter().)
-# print(cbar.ax.get_yminorticklabels())
 ax = grid.axes_row[0][0]
 ax.imshow(abs(target), vmin=vmin, vmax=vmax,origin="lower", cmap="gray")
 ax.text(0.5,1.05,"Ground Truth", color="black", fontsize=6, ha="center", va="bottom",transform=ax.transAxes)
@@ -211,9 +318,13 @@ for ca in [cax1, cax2]:
 #fig.colorbar(im_range,cax=cax1, panchor=)
 #paired_axes[0][1].colorbar(eim_range)
 
+fig.show()
+fig.savefig(f"grid_image_full.pdf",bbox_inches="tight", pad_inches=0)
 
-fig.savefig(f"grid_image{AF}.pdf",bbox_inches="tight", pad_inches=0)
 
+# %%
+
+# %%
 
 # %%
 

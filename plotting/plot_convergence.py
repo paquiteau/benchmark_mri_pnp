@@ -45,7 +45,8 @@ def parse_name(name_str):
 
 
 # %%
-BENCHMARK = "../outputs/benchopt_run_2024-10-07_16h21m03.parquet"
+# BENCHMARK = "../outputs/benchopt_run_2024-10-07_16h21m03.parquet"
+BENCHMARK = "../outputs/benchopt_run_2024-10-14_17h47m48.parquet"
 AF = 4
 
 # %%
