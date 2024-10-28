@@ -14,12 +14,14 @@ with safe_import_context() as import_ctx:
     from deepinv.optim import optim_builder, PnP, Prior, BaseOptim
     from benchmark_utils.utils import stand
     from benchmark_utils.drunet import DRUNet
+    from benchmark_utils.druneteq import DRUNeteq
 
-proj_dir = Path(__file__).parent.parent
-DRUNET_PATH = os.environ.get("DRUNET_PATH", proj_dir / "drunet_noisy.tar")
+weight_dir = Path(__file__).parent.parent / "model_weights"
+DRUNET_PATH = os.environ.get("DRUNET_PATH", weight_dir / "drunet_noisy.tar")
 DRUNET_DENOISE_PATH = os.environ.get(
-    "DRUNET_DENOISE_PATH", proj_dir / "drunet_clean.tar"
+    "DRUNET_DENOISE_PATH", weight_dir / "drunet_clean.tar"
 )
+DRUNET_EQ_PATH = os.environ.get("DRUNET_EQ_PATH", weight_dir / "drunet_eq.tar")
 
 
 class Solver(BaseSolver):
@@ -32,7 +34,7 @@ class Solver(BaseSolver):
     requirements = ["deepinv", "mrinufft[gpunufft]"]
     parameters = {
         "iteration": ["PGD", "FISTA", "ppnp-static", "ppnp-cheby", "ppnp-dynamic"],
-        "prior": ["drunet", "drunet-denoised"],
+        "prior": ["drunet", "drunet-denoised", "drunet-eq"],
         "max_iter": [50],
     }
     stopping_criterion = SufficientProgressCriterion(patience=100)
@@ -57,9 +59,13 @@ class Solver(BaseSolver):
         self.kspace_data = kspace_data
         self.physics = physics
         kwargs_optim = dict()
-        denoiser = load_drunet(
-            DRUNET_DENOISE_PATH if "denoised" in self.prior else DRUNET_PATH
-        )
+
+        if self.prior == "drunet":
+            denoiser = load_drunet(DRUNET_PATH)
+        elif self.prior == "drunet-denoised":
+            denoiser = load_drunet(DRUNET_DENOISE_PATH)
+        elif self.prior == "drunet-eq":
+            denoiser = load_drunet_eq(DRUNET_EQ_PATH)
         cpx_denoiser = Denoiser(denoiser)
         prior = PnP(cpx_denoiser)
         kwargs_optim["params_algo"] = {
@@ -157,6 +163,17 @@ class Denoiser(torch.nn.Module):
         return torch.view_as_complex(x_.contiguous()).unsqueeze(0)
 
 
+class DenoiserEq(Denoiser):
+    """Equivariant Denoiser to wrap DRUNET for Complex data."""
+
+    def forward(self, x, sigma, factor=1e4):
+        x = torch.permute(torch.view_as_real(x.squeeze(0)), (0, 3, 1, 2)).to("cuda")
+        x = x * factor
+        x_ = torch.permute(self.denoiser(x).to("cpu"), (0, 2, 3, 1))
+        x_ = x_ * 1 / factor
+        return torch.view_as_complex(x_.contiguous()).unsqueeze(0)
+
+
 def load_drunet(path_weights):
     model = DRUNet(in_channels=2, out_channels=2, pretrained=None).to("cuda")
     checkpoint = torch.load(
@@ -171,6 +188,17 @@ def load_drunet(path_weights):
     model.load_state_dict(new_checkpoint)
     model.eval()
     return model
+
+
+def load_drunet_eq(path_weights):
+
+    model = DRUNetEq(in_nc=2, out_nc=2)
+    file_name = "ckp_3037_eq.pth.tar"
+    checkpoint = torch.load(file_name, map_location=lambda storage, loc: storage)
+    model.load_state_dict(checkpoint)
+
+    sigma = 0.5
+    fact = 1e4
 
 
 # def get_custom_init(y, physics):
