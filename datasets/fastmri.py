@@ -151,7 +151,6 @@ class Dataset(BaseDataset):
             target.shape, samples_loc, smaps=self.smaps, density=None
         )
 
-
         physics = self.get_physics(
             target.shape,
             samples_loc,
@@ -173,6 +172,8 @@ class Dataset(BaseDataset):
             x_init = torch.zeros_like(x_dagger)
         elif self.init == "adjoint":
             x_init = physics_sense.A_adjoint(kspace_data)
+        else:
+            raise ValueError("Unknown initialization method")
         return dict(
             kspace_data=kspace_data,
             physics=physics_sense,
