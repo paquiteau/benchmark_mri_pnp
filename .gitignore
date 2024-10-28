@@ -22,7 +22,8 @@ coverage.xml
 *.png
 *.pdf
 *.tex
-
+plotting/*.ipynb
+plotting/*.pkl
 **/.ipynb_checkpoints
 
 # Data and model
