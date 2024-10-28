@@ -24,7 +24,7 @@ class Solver(BaseSolver):
     sampling_strategy = "run_once"
     requirements = ["deepinv", "mrinufft[gpunufft]"]
 
-    def set_objective(self, kspace_data, physics, trajectory_name):
+    def set_objective(self, kspace_data, physics, trajectory_name, x_init=None):
         # Convert the kspace data from torch to tf
         self.kspace_data = kspace_data
         self.physics = physics
