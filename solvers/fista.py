@@ -1,5 +1,5 @@
 from benchopt import BaseSolver, safe_import_context
-from benchopt.stopping_criterion import SufficientProgressCriterion
+from benchopt.stopping_criterion import SufficientProgressCriterion, NoCriterion
 import os
 from pathlib import Path
 import numpy as np

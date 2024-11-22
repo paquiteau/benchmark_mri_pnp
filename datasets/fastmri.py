@@ -1,5 +1,6 @@
 """Dataset for the fastmri multi-coil challenge."""
 
+import warnings
 from benchopt import BaseDataset, safe_import_context
 from pathlib import Path
 import numpy as np
@@ -107,15 +108,6 @@ class Dataset(BaseDataset):
         fname_denoised = str(fname).replace(
             str(FASTMRI_PATH), str(FASTMRI_PATH_DENOISED)
         )
-        with h5py.File(fname_denoised, "r") as hf:
-            # FIXME This is only okay if we have id=0
-            target_denoised = hf["image"][:2]
-            target_denoised = np.ascontiguousarray(np.moveaxis(target_denoised, 0, -1))
-            target_denoised = torch.from_numpy(target_denoised)
-            target_denoised = torch.view_as_complex(target_denoised)
-            target_denoised = complex_center_crop(target_denoised, target.shape)
-        # Get the VCC complex data
-        # Get the smaps
         if isinstance(target, np.ndarray):
             target = torch.from_numpy(target)
         if isinstance(full_kspace, np.ndarray):
@@ -134,18 +126,9 @@ class Dataset(BaseDataset):
         self.smaps, mask = self.get_smaps(
             full_kspace, full_image, crop_size=target.shape
         )
-        # rescaling of denoised version to rss
-        target_denoised = (
-            target_denoised - torch.mean(target_denoised) + torch.mean(target)
-        )
-        target_denoised = (
-            target_denoised
-            * (torch.max(abs(target)) - torch.min(abs(target)))
-            / (torch.max(abs(target_denoised)) - torch.min(abs(target_denoised)))
-        )
 
         target *= mask
-        target_denoised *= mask
+        # target_denoised *= mask
         # Initialize the physics model
         physics_sense = self.get_physics(
             target.shape, samples_loc, smaps=self.smaps, density=None
@@ -164,6 +147,12 @@ class Dataset(BaseDataset):
         kspace_data = physics.nufft.op(full_image_channels)
 
         kspace_data = kspace_data + torch.randn_like(kspace_data) * noise_std
+
+        try:
+            target_denoised = self.get_target_denoised(fname_denoised, target)
+        except FileNotFoundError:
+            warnings.warn("No denoised target found. Using original target.")
+            target_denoised = target
 
         x_dagger = physics_sense.A_dagger(kspace_data)
         if self.init == "dagger":
@@ -200,6 +189,25 @@ class Dataset(BaseDataset):
         Smaps_low = images_low / np.sqrt(SOS)
         Smaps_low *= image_mask
         return Smaps_low.detach().cpu().numpy(), image_mask
+
+    @staticmethod
+    def get_target_denoised(fname_denoised, target):
+        """Get the denoised target from dataset."""
+        with h5py.File(fname_denoised, "r") as hf:
+            # FIXME This is only okay if we have id=0
+            target_denoised = hf["image"][:2]
+            target_denoised = np.ascontiguousarray(np.moveaxis(target_denoised, 0, -1))
+            target_denoised = torch.from_numpy(target_denoised)
+            target_denoised = torch.view_as_complex(target_denoised)
+            target_denoised = complex_center_crop(target_denoised, target.shape)
+        target_denoised = (
+            target_denoised - torch.mean(target_denoised) + torch.mean(target)
+        )
+        target_denoised = (
+            target_denoised
+            * (torch.max(abs(target)) - torch.min(abs(target)))
+            / (torch.max(abs(target_denoised)) - torch.min(abs(target_denoised)))
+        )
 
     @staticmethod
     def get_physics(image_shape, samples_loc, n_coils=1, smaps=None, density="pipe"):

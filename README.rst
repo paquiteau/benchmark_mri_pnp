@@ -53,5 +53,21 @@ Solvers
 - Compressed Sensing (Fista with Wavelet)
 - Unrolled Network (NCPDNET)
 - HQS Preconditioned (ours)
-- PnP Preconditioned ?
--
+- PnP Preconditioned
+
+
+
+Running the benchmark
+---------------------
+
+After installing everything:
+
+.. code-block::
+
+   benchopt run\
+      -d fastmri-mc[id=0,contrast=T2,sampling=spiral,AF=4,init=adjoint]\
+      -d fastmri-mc[id=0,contrast=T2,sampling=spiral,AF=16,init=adjoint]\
+      -s HQS[sigma=0.024,xi=0.99,max_iter=2000,stepsize=1,lamb=1,prior=drunet-denoised]\
+      -s PNP[max_iter=2000,prior=drunet-eq]\
+      -s NCPDNET -s FISTA-Wavelet\
+      --max-runs=200

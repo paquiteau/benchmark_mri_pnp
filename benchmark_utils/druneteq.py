@@ -81,9 +81,9 @@ class DRUNetEq(nn.Module):
 
         if not self.blind:  # Concatenate noisemap as additional input
             if not isinstance(sigma, torch.Tensor):
-                sigma = torch.Tensor([sigma])
+                sigma = torch.Tensor([sigma]).to(x.device)
             # sigma is tensor of shape (batch_size,) and needs to be broadcasted to (batch_size, 1, 1, 1)
-            sigma = sigma.unsqueeze(1).unsqueeze(1).unsqueeze(1)
+            sigma = sigma.unsqueeze(1).unsqueeze(1).unsqueeze(1).to(x.device)
             noisemap = sigma * torch.ones(
                 x.size(0), 1, x.size(2), x.size(3), device=x.device, dtype=x.dtype
             )

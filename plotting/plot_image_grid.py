@@ -48,7 +48,7 @@ def parse_name(name_str):
 
 
 # %%
-#BENCHMARK = "../outputs/benchopt_run_2024-10-07_16h21m03.parquet"
+#BENCHMARK = "../outputs/benchopt_run_2024-10-28_17h00m23.parquet"
 #AF = 4
 
 # %%
@@ -104,7 +104,7 @@ dfli["p_solver_prior"].unique()
 
 # %%
 dfli = df.loc[lastiter_idx]
-dfli = dfli[dfli["p_solver_prior"].isin(["drunet-denoised", pd.NA])]
+dfli = dfli[dfli["p_solver_prior"].isin(["drunet-denoised", "drunet-eq", pd.NA])]
 dfli = dfli[dfli["p_dataset_seed"] == 1]
 dfli
 
@@ -187,7 +187,7 @@ fig = plt.figure(figsize=fig_size,dpi=300)
 grid = ImageGrid(fig, 111, nrows_ncols=(2,7), cbar_mode=None, axes_pad=0.01)
 
 [ax.axis("off") for ax in grid]
-
+labels = [] 
 for (af, dfpp), row_axes in  zip(dfp.groupby("p_dataset_AF"), grid.axes_row):
     for ax, (_, r) in zip(row_axes[:-1], dfpp.iterrows()):
         result_file = r["final_results"]
@@ -204,7 +204,9 @@ for (af, dfpp), row_axes in  zip(dfp.groupby("p_dataset_AF"), grid.axes_row):
         ax.text(0.02,0.98, f"PSNR={psnr_max:.3f}dB\nSSIM={ssim_max:.3f}", color="white",fontsize=4, ha="left", va="top", transform=ax.transAxes,)
         label = f"{r['solver_name']}-{r['p_precond']}"
         label=label.replace("-FISTA","")
-        ax.text(0.5,1.05, label, color="black",fontsize=6, ha="center", va="bottom", transform=ax.transAxes,)
+        labels.append(label)
+for ax, label in zip(grid.axes_row[0][:-1], labels):
+    ax.text(0.5,1.05, label, color="black",fontsize=6, ha="center", va="bottom", transform=ax.transAxes,)
 
 gt_ax = grid.axes_column[-1][0]
 gt_im = gt_ax.imshow(abs(target), vmin=vmin, vmax=vmax, cmap="gray", origin="lower")
@@ -214,7 +216,7 @@ gt_ax.text(0.5,1.05,"Ground Truth",ha="center", va="bottom", transform=gt_ax.tra
 
 
 for ax, af in zip(grid.axes_column[0], [4,16]):
-    ax.text(-0.05,0.5, f"AF={af}", rotation=90, va="center", ha="center",transform=ax.transAxes)
+    ax.text(-0.05,0.5, fr"\textbf{{AF={af}}}", rotation=90, va="center", ha="center",transform=ax.transAxes)
 
 traj_ax= grid.axes_column[-1][-1].inset_axes((0.1,0.1,0.8,0.8))
 
@@ -226,12 +228,13 @@ traj_ax.set_xticks([0,190,380],[-0.5,0,0.5], fontsize=4)
 traj_ax.yaxis.tick_right()
 traj_ax.set_yticks([0,190,380],[-0.5,0,0.5], fontsize=4)
 traj_ax.tick_params(width=0.2,length=1,pad=0.1)
-traj_ax.set_title("AF=16", pad=3,fontsize=4)
+traj_ax.set_title("AF=16", pad=3,fontsize=4, weight="bold")
 for spine in traj_ax.spines.values():
     spine.set(linewidth=0.5)
 traj_ax.grid(linewidth=0.5)
 
 fig.savefig(f"grid_image.pdf",bbox_inches="tight", pad_inches=0)
+fig.savefig(f"grid_image_padded.pdf",bbox_inches="tight", pad_inches=0.2)
 
 # %%
 df = df_plot
@@ -321,11 +324,5 @@ for ca in [cax1, cax2]:
 fig.show()
 fig.savefig(f"grid_image_full.pdf",bbox_inches="tight", pad_inches=0)
 
-
-# %%
-
-# %%
-
-# %%
 
 # %%

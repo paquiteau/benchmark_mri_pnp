@@ -27,9 +27,9 @@ BENCHMARK = sorted(glob.glob("../outputs/*.parquet"))[-1]
 print(BENCHMARK)
 
 # %%
-BENCHMARK_AF4 = "../outputs/benchopt_run_2024-10-07_16h21m03.parquet"
-BENCHMARK_AF8 = "../outputs/benchopt_run_2024-10-07_18h01m56.parquet"
-BENCHMARK_AF16= "../outputs/benchopt_run_2024-10-09_17h04m04.parquet"
+# BENCHMARK_AF4 = "../outputs/benchopt_run_2024-10-07_16h21m03.parquet"
+# BENCHMARK_AF8 = "../outputs/benchopt_run_2024-10-07_18h01m56.parquet"
+# BENCHMARK_AF16= "../outputs/benchopt_run_2024-10-09_17h04m04.parquet"
 
 
 # %%
@@ -51,20 +51,21 @@ def parse_name(name_str):
 
 # %%
 # BENCHMARK = "../outputs/benchopt_run_2024-10-06_22h48m18.parquet"
-# BENCHMARK = 
+BENCHMARK = "../outputs/benchopt_run_2024-10-28_17h00m23.parquet"
 
 # %%
 # Define a function to extract parameters
-df4 = pd.read_parquet(BENCHMARK_AF4)
-df8 = pd.read_parquet(BENCHMARK_AF8)
-df16 = pd.read_parquet(BENCHMARK_AF16)
+# df4 = pd.read_parquet(BENCHMARK_AF4)
+# df8 = pd.read_parquet(BENCHMARK_AF8)
+# df16 = pd.read_parquet(BENCHMARK_AF16)
 
 # df8["p_dataset_AF"] = 8 # FIxMEEEE
 # df4["p_dataset_AF"] = 4 # FIxMEEEE
 
-df = pd.concat([df4,df8,df16])
-# Create a DataFrame from the Series with parsed parameters
-df = df.convert_dtypes()
+df = pd.read_parquet(BENCHMARK)
+# df = pd.concat([df4,df8,df16])
+# # Create a DataFrame from the Series with parsed parameters
+# df = df.convert_dtypes()
 for col in ["version-numpy", "version-scipy", "version-cuda", "benchmark-git-tag","env-OMP_NUM_THREADS", "platform", "platform-architecture", "platform-version", "platform-release", "system-cpus", "system-processor", "system-ram (GB)"]:
     df = df.drop(col, axis=1)
 df.columns
@@ -86,7 +87,7 @@ dfli["solver_name"] = dfli["solver_name"].apply(lambda x: x.split("[")[0])
 
 
 # %%
-dfli = dfli[~dfli["p_solver_prior"].str.contains("drunet-denoised")]
+dfli = dfli[dfli["p_solver_prior"].isin(["drunet-eq", "drunet-denoised", "N/A"])]
 
 # %%
 dfli["p_solver_prior"].unique()
@@ -188,7 +189,7 @@ latex_jinja_env = jinja2.Environment(
 
 # %%
 organized = []
-AFS = ["4", "8", "16"]
+AFS = ["4", "16"]
 ddf = dfp3.copy() #dfp3[dfp3["p_solver_prior"] == "DRUNet"].copy()
 ddf.columns = ["_".join([str(aa) for aa in a]).rstrip("_") for a in ddf.columns.to_flat_index()]
 ddf_ranked = ddf[~ddf["solver_name"].str.contains("NCPDNET")].copy()

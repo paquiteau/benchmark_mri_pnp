@@ -46,8 +46,8 @@ def parse_name(name_str):
 
 # %%
 # BENCHMARK = "../outputs/benchopt_run_2024-10-07_16h21m03.parquet"
-BENCHMARK = "../outputs/benchopt_run_2024-10-14_17h47m48.parquet"
-AF = 4
+BENCHMARK = "../outputs/benchopt_run_2024-10-28_17h00m23.parquet"
+AF = 16
 
 # %%
 # Define a function to extract parameters
@@ -74,7 +74,7 @@ fig_size = [fig_width,fig_height]
 
 
 # %%
-params = {'backend': 'pdf',
+params = {'backend': 'agg',
           'axes.labelsize': 8,
           'font.size': 8,
           'legend.fontsize': 8,
@@ -91,6 +91,9 @@ plt.rc('text.latex', preamble=r'\def\mathdefault{\mathsf}')
 df["solver_name"].unique()
 
 # %%
+# Only select AF=16 
+df = df[df["p_dataset_AF"] == AF]
+df
 
 # %%
 df["display_solver"] = df["solver_name"]+"-"+df["p_solver_iteration"].replace({"classic":"G", "ppnp-cheby":"Cheb", "ppnp-static":"F1"})
@@ -110,7 +113,7 @@ df_plot = df[(df["p_solver_prior"] != "DRUNet") & (df["solver_name"].isin(["PNP"
 print(df_plot["p_solver_prior"].unique())
 df_plot["p_solver_prior"] = df_plot["p_solver_prior"].replace({"drunet":"DRUNet", "drunet-denoised":"D-DRUNet", None:"N/A"})
 df_plot["solver_name"] = df_plot["solver_name"].replace({"FISTA-wavelet":"FISTA-Wavelet", "ncpdnet":"NCPDNET"})
-df_plot["p_precond"] = (df_plot["p_solver_iteration"].replace({"classic":"Id", "PGD":"Id", "ppnp-cheby":"Cheb", "ppnp-static":"F1", None:"FISTA"}))
+df_plot["p_precond"] = (df_plot["p_solver_iteration"].replace({"classic":"Id", "PGD":"Id", "ppnp-cheby":"Cheb", "ppnp-static":"F1", None:"FISTA", "ppnp-dynamic":"Dyn"}))
 
 # %%
 from matplotlib.offsetbox import (
@@ -203,19 +206,19 @@ packer = VPacker(
 )
 
 legend = AnchoredOffsetbox(
-    child=packer, loc="lower left", bbox_to_anchor=(0,1), bbox_transform=ax.transAxes
+    child=packer, loc="lower right", bbox_to_anchor=(1.05,1), bbox_transform=ax.transAxes
 )
 legend.patch.set_alpha(0.7)
 legend.patch.set_edgecolor("gray")
 ax.add_artist(legend)
 #ax.legend(h,l, loc="lower right",ncols=5)
 
-ax.set_xlim(0,50)
-ax.set_ylim(33.5,38)
+ax.set_xlim(0,200)
+ax.set_ylim(22,35)
 # setup ticks
 ax.tick_params(axis='both', which='major', pad=0)  # move the tick labels
 
-
+plt.show()
 
 # %%
 fig.savefig(f"convergence{AF}.pdf",bbox_inches="tight", pad_inches=0)

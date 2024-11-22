@@ -1,5 +1,5 @@
 from benchopt import BaseSolver, safe_import_context
-from benchopt.stopping_criterion import SufficientProgressCriterion
+from benchopt.stopping_criterion import SufficientProgressCriterion, NoCriterion
 import os
 from pathlib import Path
 import numpy as np
@@ -19,11 +19,14 @@ with safe_import_context() as import_ctx:
     from benchmark_utils.utils import stand
     from benchmark_utils.drunet import DRUNet
 
-proj_dir = Path(__file__).parent.parent
-DRUNET_PATH = os.environ.get("DRUNET_PATH", proj_dir / "drunet_noisy.tar")
+
+weight_dir = Path(__file__).parent.parent / "model_weights"
+
+DRUNET_PATH = os.environ.get("DRUNET_PATH", weight_dir / "drunet_noisy.tar")
 DRUNET_DENOISE_PATH = os.environ.get(
-    "DRUNET_DENOISE_PATH", proj_dir / "drunet_clean.tar"
+    "DRUNET_DENOISE_PATH", weight_dir / "drunet_clean.tar"
 )
+DRUNET_EQ_PATH = os.environ.get("DRUNET_EQ_PATH", weight_dir / "drunet_eq.tar")
 
 
 class Solver(BaseSolver):
@@ -43,13 +46,17 @@ class Solver(BaseSolver):
         "max_iter": [20],
         "stepsize": [2],
     }
-    stopping_criterion = SufficientProgressCriterion(patience=100)
+    stopping_criterion = NoCriterion()  # SufficientProgressCriterion(patience=10000)
 
     def skip(self, *args, **kwargs):
         if self.prior == "drunet" and not os.path.exists(DRUNET_PATH):
-            return True, "DRUNet weights not found"
+            return True, "DRUNet weights not found at" + str(DRUNET_PATH)
         if self.prior == "drunet-denoised" and not os.path.exists(DRUNET_DENOISE_PATH):
-            return True, "DRUNet denoised weights not found"
+            return True, "DRUNet denoised weights not found at " + str(
+                DRUNET_DENOISE_PATH
+            )
+        elif self.prior == "drunet-eq" and not os.path.exists(DRUNET_EQ_PATH):
+            return True, "DRunet equivariant weights not found at" + str(DRUNET_EQ_PATH)
         return False, ""
 
     def get_next(self, stop_val):
@@ -108,6 +115,7 @@ class Solver(BaseSolver):
         )
 
     def run(self, callback):
+        print("MAX ITER", self.max_iter, self.algo.fixed_point.max_iter)
         with torch.no_grad():
             x_cur = self.algo.fixed_point.init_iterate_fn(
                 self.kspace_data, self.physics

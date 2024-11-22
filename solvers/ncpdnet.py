@@ -13,7 +13,7 @@ with safe_import_context() as import_ctx:
         tf.config.experimental.set_memory_growth(device=gpu, enable=True)
 
 
-proj_dir = Path(__file__).parent.parent
+proj_dir = Path(__file__).parent.parent / "model_weights"
 
 
 class Solver(BaseSolver):
