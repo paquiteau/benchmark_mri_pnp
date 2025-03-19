@@ -5,6 +5,8 @@ from tfkbnufft.kbnufft import KbNufftModule
 from tfkbnufft.mri.dcomp_calc import calculate_density_compensator
 from tfkbnufft import kbnufft_forward, kbnufft_adjoint
 import numpy as np
+import torch
+
 
 NufftOperator = mrinufft.get_operator("gpunufft")
 
@@ -47,4 +49,41 @@ class Nufft(LinearPhysics):
 
     def A_adjoint(self, kspace):
         return self.nufft.adj_op(kspace)
+
+class MCFFT(LinearPhysics):
+    def __init__(
+        self,
+        smaps=None,
+        **kwargs
+    ):
+        super(MCFFT, self).__init__(**kwargs)
+        self.smaps = smaps
+
+
+    def A(self, x):
+        return torch.fft.fftshift(
+            torch.fft.fftn(
+                torch.fft.ifftshift(
+                    x[None, :] * self.smaps,
+                    dim=(-1, -2),
+                ),
+                dim=(-1, -2),
+                norm="ortho",
+            ),
+            dim=(-1, -2),
+        )
+        
+        
+    def A_adjoint(self, kspace):
+        return torch.sum(self.smaps.conj() * torch.fft.ifftshift(
+            torch.fft.ifftn(
+                torch.fft.fftshift(
+                    kspace,
+                    dim=(-1, -2),
+                ),
+                dim=(-1, -2),
+                norm="ortho",
+            ),
+            dim=(-1, -2),
+        ), axis=0)
 
