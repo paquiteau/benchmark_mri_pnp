@@ -36,7 +36,7 @@ class Objective(BaseObjective):
             kspace_data=self.kspace_data,
             physics=self.physics,
             trajectory_name=self.trajectory_name,
-            x_init=self.x
+            x_init=self.x_init
         )
 
     def evaluate_result(self, x_estimate, cost, scale_target=1.0):
