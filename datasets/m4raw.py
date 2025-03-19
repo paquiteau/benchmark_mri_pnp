@@ -58,7 +58,10 @@ class Dataset(BaseDataset):
         # Get the VCC complex data
         # Get the smaps
         f = File("/volatile/Chaithya/Codes/benchmark_mri_pnp/data/2022062621_FLAIR01.h5")
-        target, kspace_data = f['reconstruction_rss'][10], f['kspace'][10]
+        target, kspace_data = f['reconstruction_rss'][7], f['kspace'][7]
+        noise = 10*(np.random.standard_normal(kspace_data.shape) + 1j * np.random.standard_normal(kspace_data.shape))
+        #kspace_data += noise
+        
         if isinstance(target, np.ndarray):
             target = torch.from_numpy(target)
         if isinstance(kspace_data, np.ndarray):
@@ -77,6 +80,7 @@ class Dataset(BaseDataset):
             physics=physics,
             target=target.cpu().numpy(),
             trajectory_name=self.sampling,
+            x_init=physics.A_adjoint(kspace_data)
         )
 
     @staticmethod
